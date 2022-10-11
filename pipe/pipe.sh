@@ -10,7 +10,6 @@ info "Enviroment variables setup..."
 # Required parameters
 
 export BITBUCKET_CLONE_DIR=${BITBUCKET_CLONE_DIR:?'BITBUCKET_CLONE_DIR variable missing.'}
-export BITBUCKET_REPO_SLUG=${BITBUCKET_REPO_SLUG:?'BITBUCKET_REPO_SLUG variable is missing'}
 export BITBUCKET_DEPLOYMENT_ENVIRONMENT=${BITBUCKET_DEPLOYMENT_ENVIRONMENT:?'BITBUCKET_DEPLOYMENT_ENVIRONMENT variable is missing'}
 
 export AWS_ACCESS_KEY_ID=${PIPELINE_USER_ACCESS_KEY_ID:?'PIPELINE_USER_ACCESS_KEY_ID variable missing.'}
@@ -18,14 +17,15 @@ export AWS_SECRET_ACCESS_KEY=${PIPELINE_USER_SECRET_ACCESS_KEY:?'PIPELINE_USER_S
 export AWS_REGION=${AWS_REGION:?'AWS_REGION variable is missing'}
 
 export SAM_TEMPLATE=${SAM_TEMPLATE:?'SAM_TEMPLATE variable missing.'}
-export OUTPUT_TEMPLATE_FILE=${OUTPUT_TEMPLATE_FILE:?'OUTPUT_TEMPLATE_FILE variable missing.'} #packaged-template.yaml
 export PIPELINE_EXECUTION_ROLE=${PIPELINE_EXECUTION_ROLE:?'PIPELINE_EXECUTION_ROLE variable missing.'}
 export CF_STACK_NAME=${CF_STACK_NAME:?'CF_STACK_NAME variable is missing'}
 export ARTIFACTS_BUCKET=${ARTIFACTS_BUCKET:?'ARTIFACTS_BUCKET variable is missing'}
-export CLOUDFORMATION_EXECUTION_ROLE=${CLOUDFORMATION_EXECUTION_ROLE:?'CLOUDFORMATION_EXECUTION_ROLE variable is missing'}
+export CF_EXECUTION_ROLE=${CF_EXECUTION_ROLE:?'CF_EXECUTION_ROLE variable is missing'}
 export SAM_CONFIG_FILE=${SAM_CONFIG_FILE:?'SAM_CONFIG_FILE is missing'} #samconfig.toml
-export ARTIFACTS_BUCKET_PREFIX="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}"
+export ARTIFACTS_BUCKET_PREFIX=${ARTIFACTS_BUCKET_PREFIX:?'ARTIFACTS_BUCKET_PREFIX is missing'}
 export SAM_CLI_TELEMETRY=0
+
+export OUTPUT_TEMPLATE_FILE="packaged-template.yaml"
 
 # HANDLE CAPABILITIES PARAMETER
 export CAPABILITIES=${CAPABILITIES:='NOCAPABILITIES'}
@@ -64,7 +64,7 @@ info "Running sam package command..."
 run sam package ${PARAM_DEBUG} --s3-bucket "${ARTIFACTS_BUCKET}" --s3-prefix "${ARTIFACTS_BUCKET_PREFIX}" --region "${AWS_REGION}" --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" --output-template-file ${OUTPUT_TEMPLATE_FILE}
 
 info "Running sam deploy command..."
-run sam deploy  ${PARAM_DEBUG} --s3-bucket "${ARTIFACTS_BUCKET}" --s3-prefix "${ARTIFACTS_BUCKET_PREFIX}" --region "${AWS_REGION}" --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}"             --template ${OUTPUT_TEMPLATE_FILE} --stack-name ${CF_STACK_NAME} --role-arn "${CLOUDFORMATION_EXECUTION_ROLE}" ${CAPABILITY_OPTION} --no-fail-on-empty-changeset
+run sam deploy  ${PARAM_DEBUG} --s3-bucket "${ARTIFACTS_BUCKET}" --s3-prefix "${ARTIFACTS_BUCKET_PREFIX}" --region "${AWS_REGION}" --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}"             --template ${OUTPUT_TEMPLATE_FILE} --stack-name ${CF_STACK_NAME} --role-arn "${CF_EXECUTION_ROLE}" ${CAPABILITY_OPTION} --no-fail-on-empty-changeset
 
 if [[ "${status}" == "0" ]]; then
   success "Success!"

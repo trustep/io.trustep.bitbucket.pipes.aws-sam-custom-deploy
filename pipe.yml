@@ -1,15 +1,49 @@
 name: AWS SAM Custom Deploy
-image: gilcesarf/aws-sam-custom-deploy:1.0.0
+image: trustep/aws-sam-custom-deploy:1.0.0
 description: This pipe deploys a custom AWS SAM Application.
 category: Deployment
-repository: 
+repository: https://github.com/trustep/io.trustep.bitbucket.pipes.aws-sam-custom-deploy.git
+variables:
+  - name: BITBUCKET_CLONE_DIR
+    default: "${BITBUCKET_CLONE_DIR}"
+  - name: BITBUCKET_REPO_SLUG
+    default: "${BITBUCKET_REPO_SLUG}"
+  - name: BITBUCKET_DEPLOYMENT_ENVIRONMENT
+    default: "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}"
+  - name: AWS_REGION
+    default: "${AWS_REGION}"
+  - name: PIPELINE_USER_ACCESS_KEY_ID
+    default: "${PIPELINE_USER_ACCESS_KEY_ID}"
+  - name: PIPELINE_USER_SECRET_ACCESS_KEY
+    default: "${PIPELINE_USER_SECRET_ACCESS_KEY}"
+  - name: PIPELINE_EXECUTION_ROLE
+    default: "${PIPELINE_EXECUTION_ROLE}"
+  - name: SAM_TEMPLATE
+    default: "template.yaml"
+  - name: SAM_CONFIG_FILE
+    default: "samconfig.toml"
+  - name: CF_STACK_NAME
+    default: "${CF_STACK_NAME}"
+  - name: CF_EXECUTION_ROLE
+    default: "${CF_EXECUTION_ROLE}"
+  - name: ARTIFACTS_BUCKET
+    default: "${ARTIFACTS_BUCKET}"
+  - name: ARTIFACTS_BUCKET_PREFIX
+    default: "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}"
+  - name: CAPABILITIES
+    default: "NOCAPABILITIES"
+  - name: DEBUG
+    default: "false"
 vendor:
-  name: 
-  website: 
+  name: TruStep
+  website: https://www.trustep.io
 maintainer:
-  name: 
-  website: 
+  name: TruStep
+  website: https://www.trustep.io
 tags:
     - bitbucket-pipelines
     - pipes
+    - deployment
+    - aws
+    - sam
     - bash
