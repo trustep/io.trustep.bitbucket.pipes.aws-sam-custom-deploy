@@ -1,4 +1,4 @@
-FROM public.ecr.aws/sam/build-provided
+FROM public.ecr.aws/sam/build-provided:1
 
 RUN yum install wget -y
 
