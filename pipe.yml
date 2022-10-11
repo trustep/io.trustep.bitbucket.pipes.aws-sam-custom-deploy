@@ -1,0 +1,15 @@
+name: AWS SAM Custom Deploy
+image: gilcesarf/aws-sam-custom-deploy:1.0.0
+description: This pipe deploys a custom AWS SAM Application.
+category: Deployment
+repository: 
+vendor:
+  name: 
+  website: 
+maintainer:
+  name: 
+  website: 
+tags:
+    - bitbucket-pipelines
+    - pipes
+    - bash
