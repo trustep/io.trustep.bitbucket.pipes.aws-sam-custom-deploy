@@ -1,0 +1,32 @@
+## maven output folder
+**/target
+## maven flatten-maven-plugin output
+**/.flattened-pom.xml
+
+## common log folders and files
+**/log
+**/logs
+**/*.log
+**/*.logs
+
+## from Visual Studio Code
+**/*.code-workspace
+**/.vscode
+
+## from Eclipse IDE
+**/*.settings
+**/*.project
+**/*.classpath
+**/*.pydevproject
+**/*.checkstyle
+
+## DS_Store files from macosx
+**/*.DS_Store
+
+# from Intellij
+**/.idea
+**/*.iml
+**/*.iws
+**/*.factorypath
+/bin/
+

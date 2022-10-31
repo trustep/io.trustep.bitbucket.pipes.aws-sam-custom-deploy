@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: An AWS Serverless Specification template describing your function.
+
+Parameters:
+
+  HelloWorldMessage:
+    Type: String
+    Description: The Hello World message.
+    Default: "Default Hello World Message"
+
+Resources:
+  executionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  HelloWorld:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs16.x
+      CodeUri: lambda
+      Description: 'A hello world message from lambda function'
+      MemorySize: 128
+      Timeout: 15
+      Role: !GetAtt executionRole.Arn
+      Environment:
+        Variables:
+          HELLO_WORLD_MSG: !Ref HelloWorldMessage
