@@ -23,7 +23,6 @@ jobs:
          docker build . --file Dockerfile --tag trustep/aws-sam-custom-deploy:$(date "+%Y%m%d-%H%M%S")
   undeploy-feature:
     if: startsWith(github.event.ref, 'feature') && github.event_name == 'delete'
-    needs: [setup-vars]
     uses: trustep/io.trustep.github.workflows/.github/workflows/sam-undeploy-pipeline.yaml@main
     with:
       stack_name: ${{needs.setup-vars.outputs.FEATURE_STACK_NAME}}
