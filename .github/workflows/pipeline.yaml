@@ -21,7 +21,6 @@ jobs:
         run: |
          cd src/main/docker
          docker build . --file Dockerfile --tag trustep/aws-sam-custom-deploy:$(date "+%Y%m%d-%H%M%S")
-
   undeploy-feature:
     if: startsWith(github.event.ref, 'feature') && github.event_name == 'delete'
     needs: [setup-vars]
@@ -34,37 +33,3 @@ jobs:
       sam_config_filename: ${{needs.setup-vars.outputs.SAM_CONFIG_FILENAME}}
       sam_config_environment_name: QA
     secrets: inherit
-          
-  deploy-feature:
-    # this stage is triggered only for feature branches (feature*),
-    # which will build the stack and deploy to a stack named with branch name.
-    if: startsWith(github.ref, 'refs/heads/feature') && github.event_name == 'push'
-    needs: [setup-vars]
-    uses: trustep/io.trustep.github.workflows/.github/workflows/sam-deploy-pipeline.yaml@main
-    with:
-      sam_template: ${{needs.setup-vars.outputs.SAM_TEMPLATE}}
-      stack_name: ${{needs.setup-vars.outputs.FEATURE_STACK_NAME}}
-      pipeline_execution_role_arn: ${{needs.setup-vars.outputs.TESTING_PIPELINE_EXECUTION_ROLE}}
-      cloudformation_execution_role_arn: ${{needs.setup-vars.outputs.TESTING_CLOUDFORMATION_EXECUTION_ROLE}}
-      artifacts_s3_bucket_name: ${{needs.setup-vars.outputs.TESTING_ARTIFACTS_BUCKET}}
-      region: ${{needs.setup-vars.outputs.TESTING_REGION}}
-      sam_config_filename: ${{needs.setup-vars.outputs.SAM_CONFIG_FILENAME}}
-      sam_config_environment_name: QA
-    secrets: inherit
-
-  deploy-prod:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [setup-vars]
-    uses: trustep/io.trustep.github.workflows/.github/workflows/sam-deploy-pipeline.yaml@main
-    with:
-      sam_template: ${{needs.setup-vars.outputs.SAM_TEMPLATE}}
-      stack_name: ${{needs.setup-vars.outputs.PROD_STACK_NAME}}
-      pipeline_execution_role_arn: ${{needs.setup-vars.outputs.PROD_PIPELINE_EXECUTION_ROLE}}
-      cloudformation_execution_role_arn: ${{needs.setup-vars.outputs.PROD_CLOUDFORMATION_EXECUTION_ROLE}}
-      artifacts_s3_bucket_name: ${{needs.setup-vars.outputs.PROD_ARTIFACTS_BUCKET}}
-      region: ${{needs.setup-vars.outputs.PROD_REGION}}
-      sam_config_filename: ${{needs.setup-vars.outputs.SAM_CONFIG_FILENAME}}
-      sam_config_environment_name: PROD
-    secrets: inherit
-
-
