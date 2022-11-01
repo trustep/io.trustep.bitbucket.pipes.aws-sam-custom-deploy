@@ -18,17 +18,17 @@ jobs:
     outputs:
       FEATURE_STACK_NAME: ${{ steps.setupVars.outputs.FEATURE_STACK_NAME }}
       NEXT_RELEASE_BASE_VERSION: ${{ steps.setupVars.outputs.NEXT_RELEASE_BASE_VERSION }}
-      SAM_CONFIG_FILE: ${{ steps.setupVars.outputs.SAM_CONFIG_FILE}}
-      SAM_TEMPLATE: ${{ steps.setupVars.outputs.SAM_TEMPLATE}}
-      OUTPUT_TEMPLATE_FILE: ${{ steps.setupVars.outputs.OUTPUT_TEMPLATE_FILE}}
-      ARTIFACTS_BUCKET: ${{ steps.setupVars.outputs.ARTIFACTS_BUCKET}}
-      CF_STACK_NAME: ${{ steps.setupVars.outputs.CF_STACK_NAME}}
-      BITBUCKET_DEPLOYMENT_ENVIRONMENT: ${{ steps.setupVars.outputs.BITBUCKET_DEPLOYMENT_ENVIRONMENT}}
-      IMAGE: ${{ steps.setupVars.outputs.IMAGE}}
-      BITBUCKET_REPO_SLUG: ${{ steps.setupVars.outputs.BITBUCKET_REPO_SLUG}}
-      ARTIFACTS_BUCKET_PREFIX: ${{ steps.setupVars.outputs.ARTIFACTS_BUCKET_PREFIX}}
-      BITBUCKET_CLONE_DIR: ${{ steps.setupVars.outputs.BITBUCKET_CLONE_DIR}}
-      LOCAL_PATH: ${{ steps.setupVars.outputs.LOCAL_PATH}}
+      SAM_CONFIG_FILE: ${{ steps.setupVars.outputs.SAM_CONFIG_FILE }}
+      SAM_TEMPLATE: ${{ steps.setupVars.outputs.SAM_TEMPLATE }}
+      OUTPUT_TEMPLATE_FILE: ${{ steps.setupVars.outputs.OUTPUT_TEMPLATE_FILE }}
+      ARTIFACTS_BUCKET: ${{ steps.setupVars.outputs.ARTIFACTS_BUCKET }}
+      CF_STACK_NAME: ${{ steps.setupVars.outputs.CF_STACK_NAME }}
+      BITBUCKET_DEPLOYMENT_ENVIRONMENT: ${{ steps.setupVars.outputs.BITBUCKET_DEPLOYMENT_ENVIRONMENT }}
+      IMAGE: ${{ steps.setupVars.outputs.IMAGE }}
+      BITBUCKET_REPO_SLUG: ${{ steps.setupVars.outputs.BITBUCKET_REPO_SLUG }}
+      ARTIFACTS_BUCKET_PREFIX: ${{ steps.setupVars.outputs.ARTIFACTS_BUCKET_PREFIX }}
+      BITBUCKET_CLONE_DIR: ${{ steps.setupVars.outputs.BITBUCKET_CLONE_DIR }}
+      LOCAL_PATH: ${{ steps.setupVars.outputs.LOCAL_PATH }}
     steps:
       - id: setupVars
         name: Setup Environment Variables
@@ -46,7 +46,7 @@ jobs:
           BITBUCKET_CLONE_DIR: /project
         run: |
           FEATURE_STACK_NAME=$(echo ${FEATURE_BRANCH_NAME##*/} | tr -cd '[a-zA-Z0-9-]')
-          IMAGE="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}-feat-${FEATURE_BRANCH_NAME}"
+          IMAGE="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}-feat-${FEATURE_STACK_NAME}"
           ARTIFACTS_BUCKET_PREFIX="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}"
           LOCAL_PATH=$(pwd)/src/test/docker/resources
 
