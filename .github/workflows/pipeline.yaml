@@ -45,6 +45,8 @@ jobs:
          cd src/main/docker
          docker build . --file Dockerfile --tag "${IMAGE}"
          cd ../../..
+         echo "LOCAL_PATH: ${LOCAL_PATH}"
+         ls -la ${LOCAL_PATH}
          docker run --rm \
            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
