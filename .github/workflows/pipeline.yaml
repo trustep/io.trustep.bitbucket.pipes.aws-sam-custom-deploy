@@ -65,11 +65,9 @@ jobs:
            -e CAPABILITIES="${CAPABILITIES}" \
            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
            "${IMAGE}"
-         aws configure --profile sam-pipeline-user set aws_access_key_id "$AWS_ACCESS_KEY_ID"
-         aws configure --profile sam-pipeline-user set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
-         LAMBDA_NAME=`aws cloudformation describe-stack-resources --profile sam-pipeline-user --stack-name aws-sam-custom-deploy --logical-resource-id HelloWorld --output text --query "StackResources[0].PhysicalResourceId"`
+         LAMBDA_NAME=`aws cloudformation describe-stack-resources --stack-name aws-sam-custom-deploy --logical-resource-id HelloWorld --output text --query "StackResources[0].PhysicalResourceId"`
          echo $LAMBDA_NAME
-         aws lambda invoke --profile sam-pipeline-user --function-name aws-sam-custom-deploy-HelloWorld-wVY7faXAiis5 --log-type None msg.json
+         aws lambda invoke --function-name aws-sam-custom-deploy-HelloWorld-wVY7faXAiis5 --log-type None msg.json
          cat msg.json
          LAMBDA_MSG=$(cat msg.json | jq -r .msg)
          echo $LAMBDA_MSG
