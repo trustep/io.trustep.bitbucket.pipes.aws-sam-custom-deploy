@@ -68,8 +68,14 @@ jobs:
          LAMBDA_NAME=`aws cloudformation describe-stack-resources --stack-name aws-sam-custom-deploy --logical-resource-id HelloWorld --output text --query "StackResources[0].PhysicalResourceId"`
          aws lambda invoke --function-name aws-sam-custom-deploy-HelloWorld-wVY7faXAiis5 --log-type None msg.json
          LAMBDA_MSG=$(cat msg.json | jq -r .msg)
-         if [ $LAMBDA_MSG != "Hello World from AWS SAM samconfig.toml" ]; then
+         EXPECTED_MSG="Hello World from AWS SAM samconfig.toml"
+         if [[ "${LAMBDA_MSG}" == "${EXPECTED_MSG}"" ]]
+         then
+           echo "Message returned by Hello World lambda returned as expected: ${LAMBDA_MSG}"
+         else
            echo "Message returned by Hello World lambda is not equals as expected."
+           echo "Expected: ${EXPECTED_MSG}"
+           echo "Returned: ${LAMBDA_MSG}"
            exit 1
          fi
   undeploy-feature:
