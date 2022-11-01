@@ -95,7 +95,7 @@ jobs:
 
         run: |
           cd src/main/docker
-          docker build . --file Dockerfile --tag "${{ needs.prepare.outputs.IMAGE }}"
+          docker build . --file Dockerfile --tag ${{needs.prepare.outputs.IMAGE}}
           cd ../../..
           echo "Deploying Test Stack"
           docker run --rm \
