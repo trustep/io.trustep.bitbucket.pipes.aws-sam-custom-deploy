@@ -40,6 +40,7 @@ jobs:
          BITBUCKET_DEPLOYMENT_ENVIRONMENT=qa
          ARTIFACTS_BUCKET_PREFIX="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}" \
          BITBUCKET_CLONE_DIR=/project
+         find . -name template.yaml -print
          LOCAL_PATH=$(pwd)/test/docker/resources
          IMAGE="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}-feat-${FEATURE_BRANCH_NAME}"
          cd src/main/docker
