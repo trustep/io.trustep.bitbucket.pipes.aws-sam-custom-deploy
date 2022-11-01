@@ -13,7 +13,7 @@ env:
   SAM_CLI_TELEMETRY: 0
 
 jobs:
-  setup-vars:
+  prepare:
     runs-on: ubuntu-latest
     outputs:
       FEATURE_STACK_NAME: ${{ steps.setupVars.outputs.FEATURE_STACK_NAME }}
@@ -67,7 +67,7 @@ jobs:
   deploy-feature:
     if: startsWith(github.ref, 'refs/heads/feature') && github.event_name == 'push'
     runs-on: ubuntu-latest
-    needs: [setup-vars]
+    needs: [prepare]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -80,20 +80,19 @@ jobs:
           PIPELINE_EXECUTION_ROLE: ${{ secrets.PIPELINE_EXECUTION_ROLE }}
           PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          
-          FEATURE_STACK_NAME: ${{needs.setup-vars.outputs.FEATURE_STACK_NAME}}
-          NEXT_RELEASE_BASE_VERSION: ${{ needs.setup-vars.outputs.NEXT_RELEASE_BASE_VERSION }}
-          SAM_CONFIG_FILE: ${{ needs.setup-vars.outputs.SAM_CONFIG_FILE}}
-          SAM_TEMPLATE: ${{ needs.setup-vars.outputs.SAM_TEMPLATE}}
-          OUTPUT_TEMPLATE_FILE: ${{ needs.setup-vars.outputs.OUTPUT_TEMPLATE_FILE}}
-          ARTIFACTS_BUCKET: ${{ needs.setup-vars.outputs.ARTIFACTS_BUCKET}}
-          CF_STACK_NAME: ${{ needs.setup-vars.outputs.CF_STACK_NAME}}
-          BITBUCKET_DEPLOYMENT_ENVIRONMENT: ${{ needs.setup-vars.outputs.BITBUCKET_DEPLOYMENT_ENVIRONMENT}}
-          IMAGE: ${{ needs.setup-vars.outputs.IMAGE}}
-          BITBUCKET_REPO_SLUG: ${{ needs.setup-vars.outputs.BITBUCKET_REPO_SLUG}}
-          ARTIFACTS_BUCKET_PREFIX: ${{ needs.setup-vars.outputs.ARTIFACTS_BUCKET_PREFIX}}
-          BITBUCKET_CLONE_DIR: ${{ needs.setup-vars.outputs.BITBUCKET_CLONE_DIR}}
-          LOCAL_PATH: ${{ needs.setup-vars.outputs.LOCAL_PATH}}
+          FEATURE_STACK_NAME: ${{ needs.prepare.outputs.FEATURE_STACK_NAME }}
+          NEXT_RELEASE_BASE_VERSION: ${{ needs.prepare.outputs.NEXT_RELEASE_BASE_VERSION }}
+          SAM_CONFIG_FILE: ${{ needs.prepare.outputs.SAM_CONFIG_FILE }}
+          SAM_TEMPLATE: ${{ needs.prepare.outputs.SAM_TEMPLATE }}
+          OUTPUT_TEMPLATE_FILE: ${{ needs.prepare.outputs.OUTPUT_TEMPLATE_FILE }}
+          ARTIFACTS_BUCKET: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET }}
+          CF_STACK_NAME: ${{ needs.prepare.outputs.CF_STACK_NAME }}
+          BITBUCKET_DEPLOYMENT_ENVIRONMENT: ${{ needs.prepare.outputs.BITBUCKET_DEPLOYMENT_ENVIRONMENT }}
+          IMAGE: ${{ needs.prepare.outputs.IMAGE }}
+          BITBUCKET_REPO_SLUG: ${{ needs.prepare.outputs.BITBUCKET_REPO_SLUG }}
+          ARTIFACTS_BUCKET_PREFIX: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET_PREFIX }}
+          BITBUCKET_CLONE_DIR: ${{ needs.prepare.outputs.BITBUCKET_CLONE_DIR }}
+          LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
 
         run: |
           cd src/main/docker
