@@ -45,8 +45,7 @@ jobs:
          cd src/main/docker
          docker build . --file Dockerfile --tag "${IMAGE}"
          cd ../../..
-         echo "LOCAL_PATH: ${LOCAL_PATH}"
-         ls -la ${LOCAL_PATH}
+         echo "Deploying Test Stack"
          docker run --rm \
            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
@@ -78,6 +77,16 @@ jobs:
            echo "Returned: ${LAMBDA_MSG}"
            exit 1
          fi
+         echo "Deleting test stack"
+         sam delete \
+            --no-prompts \
+            --stack-name "${CF_STACK_NAME}" \
+            --config-file "${SAM_CONFIG_FILE}" \
+            --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            --region "${AWS_REGION}" \
+            --s3-bucket "${ARTIFACTS_BUCKET}" \
+            --s3-prefix "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}"
+
   undeploy-feature:
     if: startsWith(github.event.ref, 'feature') && github.event_name == 'delete'
     uses: trustep/io.trustep.github.workflows/.github/workflows/sam-undeploy-pipeline.yaml@main
