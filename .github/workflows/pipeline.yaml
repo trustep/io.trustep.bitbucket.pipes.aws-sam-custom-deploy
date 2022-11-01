@@ -65,7 +65,12 @@ jobs:
            -e CAPABILITIES="${CAPABILITIES}" \
            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
            "${IMAGE}"
-
+         LAMBDA_NAME=`aws cloudformation describe-stack-resources --stack-name aws-sam-custom-deploy --logical-resource-id HelloWorld --output text --query "StackResources[0].PhysicalResourceId"`
+         echo $LAMBDA_NAME
+         aws lambda invoke --function-name aws-sam-custom-deploy-HelloWorld-wVY7faXAiis5 --log-type None msg.json
+         cat msg.json
+         LAMBDA_MSG=$(cat msg.json | jq -r .msg)
+         echo $LAMBDA_MSG
   undeploy-feature:
     if: startsWith(github.event.ref, 'feature') && github.event_name == 'delete'
     uses: trustep/io.trustep.github.workflows/.github/workflows/sam-undeploy-pipeline.yaml@main
