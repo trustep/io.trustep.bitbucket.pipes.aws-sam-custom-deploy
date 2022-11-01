@@ -13,77 +13,106 @@ env:
   SAM_CLI_TELEMETRY: 0
 
 jobs:
+  setup-vars:
+    runs-on: ubuntu-latest
+    steps:
+      - id: step1
+        name: Setup Environment Variables
+        env:
+          NEXT_RELEASE_BASE_VERSION: ${{ secrets.NEXT_RELEASE_BASE_VERSION }}
+          FEATURE_BRANCH_NAME: ${{github.event.ref}}
+          SAM_CONFIG_FILE: samconfig.toml
+          SAM_TEMPLATE: template.yaml
+          OUTPUT_TEMPLATE_FILE: packaged-template.yaml
+          ARTIFACTS_BUCKET: io.trustep.manager.cf.templates
+          CAPABILITIES: CAPABILITY_IAM
+          CF_STACK_NAME: aws-sam-custom-deploy
+          BITBUCKET_DEPLOYMENT_ENVIRONMENT: qa
+          BITBUCKET_REPO_SLUG: aws-sam-custom-deploy
+          BITBUCKET_CLONE_DIR: /project
+        run: |
+          FEATURE_STACK_NAME=$(echo ${FEATURE_BRANCH_NAME##*/} | tr -cd '[a-zA-Z0-9-]')
+          IMAGE="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}-feat-${FEATURE_BRANCH_NAME}"
+          ARTIFACTS_BUCKET_PREFIX="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}"
+          LOCAL_PATH=$(pwd)/src/test/docker/resources
+          
+          echo "FEATURE_STACK_NAME=${FEATURE_STACK_NAME}" >> $GITHUB_ENV
+          echo "NEXT_RELEASE_BASE_VERSION=${NEXT_RELEASE_BASE_VERSION}" >> $GITHUB_ENV
+          echo "SAM_CONFIG_FILE=${SAM_CONFIG_FILE}" >> $GITHUB_ENV
+          echo "SAM_TEMPLATE=${SAM_TEMPLATE}" >> $GITHUB_ENV
+          echo "OUTPUT_TEMPLATE_FILE=${OUTPUT_TEMPLATE_FILE}" >> $GITHUB_ENV
+          echo "ARTIFACTS_BUCKET=${ARTIFACTS_BUCKET}" >> $GITHUB_ENV
+          echo "CF_STACK_NAME=${CF_STACK_NAME}" >> $GITHUB_ENV
+          echo "BITBUCKET_DEPLOYMENT_ENVIRONMENT=${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" >> $GITHUB_ENV
+          echo "IMAGE=${IMAGE}" >> $GITHUB_ENV
+          echo "BITBUCKET_REPO_SLUG=${BITBUCKET_REPO_SLUG}" >> $GITHUB_ENV
+          echo "ARTIFACTS_BUCKET_PREFIX=${ARTIFACTS_BUCKET_PREFIX}" >> $GITHUB_ENV
+          echo "BITBUCKET_CLONE_DIR=${BITBUCKET_CLONE_DIR}" >> $GITHUB_ENV
+          echo "LOCAL_PATH=${LOCAL_PATH}" >> $GITHUB_ENV
+  
   deploy-feature:
     if: startsWith(github.ref, 'refs/heads/feature') && github.event_name == 'push'
     runs-on: ubuntu-latest
+    needs: [setup-vars]
     steps:
       - uses: actions/checkout@v2
       - name: Build the Docker image
         env:
-          NEXT_RELEASE_BASE_VERSION: ${{ secrets.NEXT_RELEASE_BASE_VERSION }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           CF_EXECUTION_ROLE: ${{ secrets.CLOUDFORMATION_EXECUTION_ROLE }}
           PIPELINE_EXECUTION_ROLE: ${{ secrets.PIPELINE_EXECUTION_ROLE }}
-          SAM_TEMPLATE: template.yaml
-          SAM_CONFIG_FILE: samconfig.toml
-          OUTPUT_TEMPLATE_FILE: packaged-template.yaml
           PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          ARTIFACTS_BUCKET: io.trustep.manager.cf.templates
-          CAPABILITIES: CAPABILITY_IAM
-          CF_STACK_NAME: aws-sam-custom-deploy
         run: |
-         FEATURE_STACK_NAME=$(echo ${FEATURE_BRANCH_NAME##*/} | tr -cd '[a-zA-Z0-9-]')
-         BITBUCKET_REPO_SLUG=aws-sam-custom-deploy
-         BITBUCKET_DEPLOYMENT_ENVIRONMENT=qa
-         ARTIFACTS_BUCKET_PREFIX="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}" \
-         BITBUCKET_CLONE_DIR=/project
-         LOCAL_PATH=$(pwd)/src/test/docker/resources
-         IMAGE="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}-feat-${FEATURE_BRANCH_NAME}"
-         cd src/main/docker
-         docker build . --file Dockerfile --tag "${IMAGE}"
-         cd ../../..
-         echo "Deploying Test Stack"
-         docker run --rm \
-           -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
-           -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
-           -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
-           -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
-           -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
-           -e CF_STACK_NAME="${CF_STACK_NAME}" \
-           -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
-           -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
-           -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
-           -e ARTIFACTS_BUCKET_PREFIX="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}" \
-           -e AWS_REGION="${AWS_REGION}" \
-           -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
-           -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
-           -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
-           -e CAPABILITIES="${CAPABILITIES}" \
-           -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
-           "${IMAGE}"
-         LAMBDA_NAME=`aws cloudformation describe-stack-resources --stack-name aws-sam-custom-deploy --logical-resource-id HelloWorld --output text --query "StackResources[0].PhysicalResourceId"`
-         aws lambda invoke --function-name aws-sam-custom-deploy-HelloWorld-wVY7faXAiis5 --log-type None msg.json
-         LAMBDA_MSG=$(cat msg.json | jq -r .msg)
-         EXPECTED_MSG="Hello World from AWS SAM samconfig.toml"
-         if [[ ${LAMBDA_MSG} == ${EXPECTED_MSG} ]]
-         then
-           echo "Message returned by Hello World lambda returned as expected: ${LAMBDA_MSG}"
-         else
-           echo "Message returned by Hello World lambda is not equals as expected."
-           echo "Expected: ${EXPECTED_MSG}"
-           echo "Returned: ${LAMBDA_MSG}"
-           exit 1
-         fi
-         echo "Assuming Pipeline Role"
-         cred=$(aws sts assume-role --role-arn "$PIPELINE_EXECUTION_ROLE" --role-session-name "testing-stage-packaging" --query '[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]' --output text)
-         export AWS_ACCESS_KEY_ID=$(echo "$cred" | awk '{ print $1 }')
-         export AWS_SECRET_ACCESS_KEY=$(echo "$cred" | awk '{ print $2 }')
-         export AWS_SESSION_TOKEN=$(echo "$cred" | awk '{ print $3 }')
-         echo "Deleting test stack"
-         sam delete \
+          cd src/main/docker
+          docker build . --file Dockerfile --tag "${IMAGE}"
+          cd ../../..
+          echo "Deploying Test Stack"
+          docker run --rm \
+            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
+            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
+            -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
+            -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
+            -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
+            -e CF_STACK_NAME="${CF_STACK_NAME}" \
+            -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
+            -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}" \
+            -e AWS_REGION="${AWS_REGION}" \
+            -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
+            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
+            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
+            -e CAPABILITIES="${CAPABILITIES}" \
+            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
+            "${IMAGE}"
+          LAMBDA_NAME=`aws cloudformation describe-stack-resources --stack-name aws-sam-custom-deploy --logical-resource-id HelloWorld --output text --query "StackResources[0].PhysicalResourceId"`
+          aws lambda invoke --function-name aws-sam-custom-deploy-HelloWorld-wVY7faXAiis5 --log-type None msg.json
+          LAMBDA_MSG=$(cat msg.json | jq -r .msg)
+          EXPECTED_MSG="Hello World from AWS SAM samconfig.toml"
+          if [[ ${LAMBDA_MSG} == ${EXPECTED_MSG} ]]
+          then
+            echo "Message returned by Hello World lambda returned as expected: ${LAMBDA_MSG}"
+          else
+            echo "Message returned by Hello World lambda is not equals as expected."
+            echo "Expected: ${EXPECTED_MSG}"
+            echo "Returned: ${LAMBDA_MSG}"
+            exit 1
+          fi
+          echo "Assuming Pipeline Role"
+          cred=$(aws sts assume-role \
+            --role-arn "$PIPELINE_EXECUTION_ROLE" \
+            --role-session-name "testing-stage-packaging" \
+            --query '[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]' \
+            --output text \
+          )
+          AWS_ACCESS_KEY_ID=$(echo "$cred" | awk '{ print $1 }')
+          AWS_SECRET_ACCESS_KEY=$(echo "$cred" | awk '{ print $2 }')
+          AWS_SESSION_TOKEN=$(echo "$cred" | awk '{ print $3 }')
+          echo "Deleting test stack"
+          sam delete \
             --no-prompts \
             --stack-name "${CF_STACK_NAME}" \
             --config-file "${SAM_CONFIG_FILE}" \
