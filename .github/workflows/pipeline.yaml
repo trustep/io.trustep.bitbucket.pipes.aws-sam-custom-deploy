@@ -41,7 +41,7 @@ jobs:
          ARTIFACTS_BUCKET_PREFIX="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}" \
          BITBUCKET_CLONE_DIR=/project
          LOCAL_PATH=$(pwd)/test/docker/resources
-         IMAGE="${GITHUB_REPOSITORY}:${NEXT_RELEASE_BASE_VERSION}-feat-${FEATURE_BRANCH_NAME}"
+         IMAGE="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}-feat-${FEATURE_BRANCH_NAME}"
          cd src/main/docker
          docker build . --file Dockerfile --tag "${IMAGE}"
          cd ../../..
@@ -57,7 +57,7 @@ jobs:
            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
            -e ARTIFACTS_BUCKET_PREFIX="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}" \
            -e AWS_REGION="${AWS_REGION}" \
-           -e CF_EXECUTION_ROLE="${CLOUDFORMATION_EXECUTION_ROLE}" \
+           -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
            -e CAPABILITIES="${CAPABILITIES}" \
