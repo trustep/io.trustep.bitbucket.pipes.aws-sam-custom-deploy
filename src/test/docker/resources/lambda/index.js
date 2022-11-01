@@ -8,5 +8,5 @@ export async function handler(event) {
   var helloWorldMsg = process.env.HELLO_WORLD_MSG;
   console.log(helloWorldMsg);
   resp['msg'] = helloWorldMsg;
-  return respuesta;
+  return resp;
 }

@@ -1,7 +1,6 @@
 #!/bin/bash
 #
-# This pipe is an example to show how easy is to create pipes for Bitbucket Pipelines.
-#
+source ~/.nvm/nvm.sh 
 source "$(dirname "$0")/common.sh"
 
 info "Enviroment variables setup..."
