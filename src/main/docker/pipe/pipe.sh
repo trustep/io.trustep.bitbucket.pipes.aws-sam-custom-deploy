@@ -50,7 +50,7 @@ info "BITBUCKET_CLONE_DIR = ${BITBUCKET_CLONE_DIR}"
 cd $BITBUCKET_CLONE_DIR
 
 info "Running sam build command..."
-run sam build ${PARAM_DEBUG} --template $SAM_TEMPLATE --use-container --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}"
+run sam build ${PARAM_DEBUG} --template $SAM_TEMPLATE --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}"
 
 info "Assuming pipeline execution role..."
 cred=$(aws sts assume-role --role-arn "$PIPELINE_EXECUTION_ROLE" --role-session-name "testing-stage-packaging" --query '[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]' --output text)
