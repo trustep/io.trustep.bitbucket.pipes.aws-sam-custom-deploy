@@ -88,7 +88,6 @@ jobs:
           ARTIFACTS_BUCKET: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET }}
           CF_STACK_NAME: ${{ needs.prepare.outputs.CF_STACK_NAME }}
           BITBUCKET_DEPLOYMENT_ENVIRONMENT: ${{ needs.prepare.outputs.BITBUCKET_DEPLOYMENT_ENVIRONMENT }}
-          IMAGE: ${{ needs.prepare.outputs.IMAGE }}
           BITBUCKET_REPO_SLUG: ${{ needs.prepare.outputs.BITBUCKET_REPO_SLUG }}
           ARTIFACTS_BUCKET_PREFIX: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET_PREFIX }}
           BITBUCKET_CLONE_DIR: ${{ needs.prepare.outputs.BITBUCKET_CLONE_DIR }}
@@ -96,7 +95,7 @@ jobs:
 
         run: |
           cd src/main/docker
-          docker build . --file Dockerfile --tag "${IMAGE}"
+          docker build . --file Dockerfile --tag "${{ needs.prepare.outputs.IMAGE }}"
           cd ../../..
           echo "Deploying Test Stack"
           docker run --rm \
