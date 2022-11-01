@@ -69,7 +69,7 @@ jobs:
          aws lambda invoke --function-name aws-sam-custom-deploy-HelloWorld-wVY7faXAiis5 --log-type None msg.json
          LAMBDA_MSG=$(cat msg.json | jq -r .msg)
          EXPECTED_MSG="Hello World from AWS SAM samconfig.toml"
-         if [[ "${LAMBDA_MSG}" == "${EXPECTED_MSG}"" ]]
+         if [[ ${LAMBDA_MSG} == ${EXPECTED_MSG} ]]
          then
            echo "Message returned by Hello World lambda returned as expected: ${LAMBDA_MSG}"
          else
