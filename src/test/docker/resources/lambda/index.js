@@ -4,7 +4,7 @@ let resp = {
   msg: "",
 };
 
-export async function handler(event) {
+exports.handler = async (event) => {
   var helloWorldMsg = process.env.HELLO_WORLD_MSG;
   console.log(helloWorldMsg);
   resp['msg'] = helloWorldMsg;
