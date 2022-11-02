@@ -138,10 +138,11 @@ jobs:
             --query '[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]' \
             --output text \
           )
-          AWS_ACCESS_KEY_ID=$(echo "$cred" | awk '{ print $1 }')
-          AWS_SECRET_ACCESS_KEY=$(echo "$cred" | awk '{ print $2 }')
-          AWS_SESSION_TOKEN=$(echo "$cred" | awk '{ print $3 }')
+          export AWS_ACCESS_KEY_ID=$(echo "$cred" | awk '{ print $1 }')
+          export AWS_SECRET_ACCESS_KEY=$(echo "$cred" | awk '{ print $2 }')
+          export AWS_SESSION_TOKEN=$(echo "$cred" | awk '{ print $3 }')
           echo "Deleting test stack"
+          pushd $LOCAL_PATH
           sam delete \
             --no-prompts \
             --stack-name "${CF_STACK_NAME}" \
@@ -150,6 +151,7 @@ jobs:
             --region "${AWS_REGION}" \
             --s3-bucket "${ARTIFACTS_BUCKET}" \
             --s3-prefix "${ARTIFACTS_BUCKET_PREFIX}"
+          popd
 
   undeploy-feature:
     if: startsWith(github.event.ref, 'feature') && github.event_name == 'delete'
