@@ -35,3 +35,9 @@ Resources:
       Environment:
         Variables:
           HELLO_WORLD_MSG: !Ref HelloWorldMessage
+  LambdaFunctionLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    DependsOn: "HelloWorld"
+    Properties: 
+      RetentionInDays: 1
+      LogGroupName: !Join ["", ["/aws/lambda/", !Ref HelloWorld]]
