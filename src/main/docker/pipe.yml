@@ -34,6 +34,8 @@ variables:
     default: "NOCAPABILITIES"
   - name: DEBUG
     default: "false"
+  - name: DELETE
+    default: "false"
 vendor:
   name: TruStep
   website: https://www.trustep.io
