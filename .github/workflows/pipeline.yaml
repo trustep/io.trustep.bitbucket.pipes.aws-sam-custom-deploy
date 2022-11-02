@@ -115,12 +115,11 @@ jobs:
             -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
             -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
             -e CAPABILITIES="${CAPABILITIES}" \
-            -e DEBUG="true" \
             -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
             "${IMAGE}"
           echo "Invoking Hello World Lambda"
           LAMBDA_NAME=`aws cloudformation describe-stack-resources --stack-name aws-sam-custom-deploy --logical-resource-id HelloWorld --output text --query "StackResources[0].PhysicalResourceId"`
-          aws lambda invoke --function-name aws-sam-custom-deploy-HelloWorld-wVY7faXAiis5 --log-type None msg.json
+          aws lambda invoke --function-name ${LAMBDA_NAME} --log-type None msg.json
           LAMBDA_MSG=$(cat msg.json | jq -r .msg)
           EXPECTED_MSG="Hello World from AWS SAM samconfig.toml"
           if [[ ${LAMBDA_MSG} == ${EXPECTED_MSG} ]]
@@ -134,7 +133,7 @@ jobs:
           fi
           echo "Assuming Pipeline Role"
           cred=$(aws sts assume-role \
-            --role-arn "$PIPELINE_EXECUTION_ROLE" \
+            --role-arn "${PIPELINE_EXECUTION_ROLE}" \
             --role-session-name "testing-stage-packaging" \
             --query '[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]' \
             --output text \
@@ -150,7 +149,7 @@ jobs:
             --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
             --region "${AWS_REGION}" \
             --s3-bucket "${ARTIFACTS_BUCKET}" \
-            --s3-prefix "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}"
+            --s3-prefix "${ARTIFACTS_BUCKET_PREFIX}"
 
   undeploy-feature:
     if: startsWith(github.event.ref, 'feature') && github.event_name == 'delete'
