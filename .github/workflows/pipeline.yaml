@@ -94,9 +94,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Login to Docker Hub
+      - name: Login to Docker Hub & install jq
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
+          sudo apt install -y jq
       - name: Build the Docker Image
         run: |
           cd src/main/docker
@@ -161,9 +162,17 @@ jobs:
             -e DELETE="true" \
             -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
             "${DOCKER_HUB_USERNAME}/${IMAGE}"
-      - name: Upload docker image to Docker Hub
+      - name: Push image to Docker Hub
         run: |
           docker push "${DOCKER_HUB_USERNAME}/${IMAGE}"
+      - name: Delete image from Docker Hub
+        run: |
+          echo "Generating Docker Hub Credentials"
+          DOCKER_HUB_TOKEN=$(curl --silent -X POST -H "Content-Type: application/json" -d "{\"username\": \"trustep\", \"password\": \"${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}\"}" https://hub.docker.com/v2/users/login)
+          DOCKER_HUB_BEARER=$(echo ${DOCKER_HUB_TOKEN}|jq -r ".token")
+          DOCKER_IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' trustep/aws-sam-custom-deploy:1.0.0-feat-3-criar-workflow |awk -F"@" '{print $2}')
+          echo "Deleting docker image from Docker Hub"
+          curl --location --silent -X POST 'https://hub.docker.com/v2/namespaces/trustep/delete-images' --header "Authorization: Bearer ${DOCKER_HUB_BEARER}" --header 'Content-Type: application/json' -d "{\"dry_run\": false, \"manifests\": [{\"repository\": \"aws-sam-custom-deploy\", \"digest\": \"${DOCKER_IMAGE_DIGEST}\" }]}"
 
   undeploy-feature:
     if: startsWith(github.event.ref, 'feature') && github.event_name == 'delete'
