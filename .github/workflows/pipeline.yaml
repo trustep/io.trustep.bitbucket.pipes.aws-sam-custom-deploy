@@ -76,6 +76,7 @@ jobs:
       PIPELINE_EXECUTION_ROLE: ${{ secrets.PIPELINE_EXECUTION_ROLE }}
       PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      DOCKER_HUB_USERNAME: ${{secrets.DOCKER_HUB_USERNAME}}
       DOCKER_HUB_PERSONAL_ACCESS_TOKEN: ${{secrets.DOCKER_HUB_PERSONAL_ACCESS_TOKEN}}
       FEATURE_STACK_NAME: ${{ needs.prepare.outputs.FEATURE_STACK_NAME }}
       NEXT_RELEASE_BASE_VERSION: ${{ needs.prepare.outputs.NEXT_RELEASE_BASE_VERSION }}
@@ -95,11 +96,11 @@ jobs:
         uses: actions/checkout@v3
       - name: Login to Docker Hub
         run: |
-          docker login -u trustep -p ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}
+          echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
       - name: Build the Docker Image
         run: |
           cd src/main/docker
-          docker build . --file Dockerfile --tag ${IMAGE}
+          docker build . --file Dockerfile --tag "${DOCKER_HUB_USERNAME}/${IMAGE}"
           cd ../../..
       - name: Test Deployment of HelloWorld SAM Stack
         run: |
@@ -120,7 +121,7 @@ jobs:
             -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
             -e CAPABILITIES="${CAPABILITIES}" \
             -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
-            "${IMAGE}"
+            "${DOCKER_HUB_USERNAME}/${IMAGE}"
       - name: Check if HelloWorld SAM Stack got deployed correctly
         run: |
           echo "Discovering Hello World Lambda Name"
@@ -159,7 +160,7 @@ jobs:
             -e CAPABILITIES="${CAPABILITIES}" \
             -e DELETE="true" \
             -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
-            "${IMAGE}"
+            "${DOCKER_HUB_USERNAME}/${IMAGE}"
       - name: Upload docker image to Docker Hub
         run: |
           docker run --rm \
@@ -180,7 +181,7 @@ jobs:
             -e CAPABILITIES="${CAPABILITIES}" \
             -e DELETE="true" \
             -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
-            "${IMAGE}"
+            "${DOCKER_HUB_USERNAME}/${IMAGE}"
 
   undeploy-feature:
     if: startsWith(github.event.ref, 'feature') && github.event_name == 'delete'
