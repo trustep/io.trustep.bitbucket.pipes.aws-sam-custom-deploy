@@ -70,7 +70,7 @@ jobs:
     needs: [prepare]
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Build the Docker image
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -95,10 +95,11 @@ jobs:
           LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
 
         run: |
+          wget --no-verbose --output-document=/common.sh https://bitbucket.org/bitbucketpipelines/bitbucket-pipes-toolkit-bash/raw/0.6.0/common.sh && chmod ugo+x /common.sh
           cd src/main/docker
           docker build . --file Dockerfile --tag ${IMAGE}
           cd ../../..
-          echo "Deploying Test Stack"
+          info "Deploying Test Stack"
           docker run --rm \
             -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
             -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
@@ -117,21 +118,21 @@ jobs:
             -e CAPABILITIES="${CAPABILITIES}" \
             -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
             "${IMAGE}"
-          echo "Invoking Hello World Lambda"
+          info "Invoking Hello World Lambda"
           LAMBDA_NAME=`aws cloudformation describe-stack-resources --stack-name aws-sam-custom-deploy --logical-resource-id HelloWorld --output text --query "StackResources[0].PhysicalResourceId"`
           aws lambda invoke --function-name ${LAMBDA_NAME} --log-type None msg.json
           LAMBDA_MSG=$(cat msg.json | jq -r .msg)
           EXPECTED_MSG="Hello World from AWS SAM samconfig.toml"
           if [[ ${LAMBDA_MSG} == ${EXPECTED_MSG} ]]
           then
-            echo "Message returned by Hello World lambda returned as expected: ${LAMBDA_MSG}"
+            info "Message returned by Hello World lambda returned as expected: ${LAMBDA_MSG}"
           else
-            echo "Message returned by Hello World lambda is not equals as expected."
-            echo "Expected: ${EXPECTED_MSG}"
-            echo "Returned: ${LAMBDA_MSG}"
+            error "Message returned by Hello World lambda is not equals as expected."
+            error "Expected: ${EXPECTED_MSG}"
+            error "Returned: ${LAMBDA_MSG}"
             exit 1
           fi
-          echo "Assuming Pipeline Role"
+          info "Assuming Pipeline Role"
           cred=$(aws sts assume-role \
             --role-arn "${PIPELINE_EXECUTION_ROLE}" \
             --role-session-name "testing-stage-packaging" \
@@ -141,7 +142,7 @@ jobs:
           export AWS_ACCESS_KEY_ID=$(echo "$cred" | awk '{ print $1 }')
           export AWS_SECRET_ACCESS_KEY=$(echo "$cred" | awk '{ print $2 }')
           export AWS_SESSION_TOKEN=$(echo "$cred" | awk '{ print $3 }')
-          echo "Deleting test stack"
+          info "Deleting test stack"
           pushd $LOCAL_PATH
           sam delete \
             --no-prompts \
