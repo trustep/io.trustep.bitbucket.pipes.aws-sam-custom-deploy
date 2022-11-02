@@ -39,7 +39,7 @@ jobs:
       - id: setupVars
         name: Setup Environment Variables
         env:
-          NEXT_RELEASE_BASE_VERSION: 1.0.0
+          NEXT_RELEASE_BASE_VERSION: 1.1.0
           FEATURE_BRANCH_NAME: ${{github.event.ref}}
           SAM_CONFIG_FILE: samconfig.toml
           SAM_TEMPLATE: template.yaml
