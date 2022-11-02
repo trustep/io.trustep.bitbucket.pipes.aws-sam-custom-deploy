@@ -1,8 +1,10 @@
 # Bitbucket Pipelines Pipe: AWS SAM Custom Deploy by TruStep
 
-Deploys a AWS SAM application with custom parameters. Developed by TruStep.
+A BitBucket Pipe based on public.ecr.aws/sam/build-provided image to allow customized AWS SAM deploys. 
 
-This pipe is uses public.ecr.aws/sam/build-provided public image as base to issue calls to the sam commands build, package and deploy using a set of custom parameters.
+Allows deployments of AWS SAM applications with various custom parameters. 
+
+This pipe uses public.ecr.aws/sam/build-provided public image as base to issue calls to the sam commands build, package, deploy and delete using a set of custom parameters.
 
 You can use the default deployment mode or the delete mode.
 
@@ -31,6 +33,7 @@ Add the following snippet to the script section of your `bitbucket-pipelines.yml
     ARTIFACTS_BUCKET_PREFIX: '<string>'
     CAPABILITIES: '<CAPABILITY_IAM|CAPABILITY_NAMED_IAM|NOCAPABILITIES>'
     DEBUG: '<true|false>'
+    DELETE: '<true|false>'
 ```
 
 ## Variables
@@ -121,7 +124,7 @@ script:
 ```
 
 ## Support
-If you'd like help with this pipe, or you have an issue or feature request, let us know on our github repository.
+If you'd like help with this pipe, or you have an issue or feature request, let us know on our [github repository](https://github.com/trustep/io.trustep.bitbucket.pipes.aws-sam-custom-deploy).
 
 If you're reporting an issue, please include:
 
