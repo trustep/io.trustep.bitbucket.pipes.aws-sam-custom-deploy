@@ -92,6 +92,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      - name: Login to Docker Hub
+        run: |
+          docker login -u trustep -p ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}
       - name: Build the Docker Image
         run: |
           cd src/main/docker
@@ -136,6 +139,27 @@ jobs:
             exit 1
           fi
       - name: Cleanup HelloWorld SAM Stack
+        run: |
+          docker run --rm \
+            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
+            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
+            -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
+            -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
+            -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
+            -e CF_STACK_NAME="${CF_STACK_NAME}" \
+            -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
+            -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${ARTIFACTS_BUCKET_PREFIX}" \
+            -e AWS_REGION="${AWS_REGION}" \
+            -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
+            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
+            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
+            -e CAPABILITIES="${CAPABILITIES}" \
+            -e DELETE="true" \
+            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
+            "${IMAGE}"
+      - name: Upload docker image to Docker Hub
         run: |
           docker run --rm \
             -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
