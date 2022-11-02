@@ -88,6 +88,7 @@ jobs:
           ARTIFACTS_BUCKET: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET }}
           CF_STACK_NAME: ${{ needs.prepare.outputs.CF_STACK_NAME }}
           BITBUCKET_DEPLOYMENT_ENVIRONMENT: ${{ needs.prepare.outputs.BITBUCKET_DEPLOYMENT_ENVIRONMENT }}
+          IMAGE: ${{needs.prepare.outputs.IMAGE}}
           BITBUCKET_REPO_SLUG: ${{ needs.prepare.outputs.BITBUCKET_REPO_SLUG }}
           ARTIFACTS_BUCKET_PREFIX: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET_PREFIX }}
           BITBUCKET_CLONE_DIR: ${{ needs.prepare.outputs.BITBUCKET_CLONE_DIR }}
@@ -95,7 +96,7 @@ jobs:
 
         run: |
           cd src/main/docker
-          docker build . --file Dockerfile --tag ${{needs.prepare.outputs.IMAGE}}
+          docker build . --file Dockerfile --tag ${IMAGE}
           cd ../../..
           echo "Deploying Test Stack"
           docker run --rm \
@@ -108,14 +109,16 @@ jobs:
             -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
             -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
             -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
-            -e ARTIFACTS_BUCKET_PREFIX="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${ARTIFACTS_BUCKET_PREFIX}" \
             -e AWS_REGION="${AWS_REGION}" \
             -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
             -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
             -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
             -e CAPABILITIES="${CAPABILITIES}" \
+            -e DEBUG="true" \
             -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
             "${IMAGE}"
+          echo "Invoking Hello World Lambda"
           LAMBDA_NAME=`aws cloudformation describe-stack-resources --stack-name aws-sam-custom-deploy --logical-resource-id HelloWorld --output text --query "StackResources[0].PhysicalResourceId"`
           aws lambda invoke --function-name aws-sam-custom-deploy-HelloWorld-wVY7faXAiis5 --log-type None msg.json
           LAMBDA_MSG=$(cat msg.json | jq -r .msg)
