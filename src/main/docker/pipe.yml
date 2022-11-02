@@ -13,9 +13,9 @@ variables:
   - name: AWS_REGION
     default: "${AWS_REGION}"
   - name: PIPELINE_USER_ACCESS_KEY_ID
-    default: "${PIPELINE_USER_ACCESS_KEY_ID}"
+    default: "${AWS_ACCESS_KEY_ID}"
   - name: PIPELINE_USER_SECRET_ACCESS_KEY
-    default: "${PIPELINE_USER_SECRET_ACCESS_KEY}"
+    default: "${AWS_SECRET_ACCESS_KEY}"
   - name: PIPELINE_EXECUTION_ROLE
     default: "${PIPELINE_EXECUTION_ROLE}"
   - name: SAM_TEMPLATE
@@ -33,6 +33,8 @@ variables:
   - name: CAPABILITIES
     default: "NOCAPABILITIES"
   - name: DEBUG
+    default: "false"
+  - name: DELETE
     default: "false"
 vendor:
   name: TruStep

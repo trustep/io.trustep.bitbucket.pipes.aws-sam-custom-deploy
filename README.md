@@ -1,8 +1,16 @@
-# Bitbucket Pipelines Pipe: AWS SAM Custom Deploy
+# Bitbucket Pipelines Pipe: AWS SAM Custom Deploy by TruStep
 
-Deploys a AWS SAM application with custom parameters.
+A BitBucket Pipe based on public.ecr.aws/sam/build-provided image to allow customized AWS SAM deploys. 
 
-This pipe is uses public.ecr.aws/sam/build-provided public image as base to issue calls to the sam commands build, package and deploy using a set of custom parameters.
+Allows deployments of AWS SAM applications with various custom parameters. 
+
+This pipe uses public.ecr.aws/sam/build-provided public image as base to issue calls to the sam commands build, package, deploy and delete using a set of custom parameters.
+
+You can use the default deployment mode or the delete mode.
+
+The deployment mode will run sam build, sam package and sam deploy commands.
+
+The delete mode will run only sam delete command.
 
 ## YAML Definition
 
@@ -25,32 +33,77 @@ Add the following snippet to the script section of your `bitbucket-pipelines.yml
     ARTIFACTS_BUCKET_PREFIX: '<string>'
     CAPABILITIES: '<CAPABILITY_IAM|CAPABILITY_NAMED_IAM|NOCAPABILITIES>'
     DEBUG: '<true|false>'
+    DELETE: '<true|false>'
 ```
 
 ## Variables
 
-| Variable                         | Required | Default Value | Usage                            |
-| -------------------------------- | ----------------------------------------------------------- |
-| BITBUCKET_CLONE_DIR              | Yes      | ${BITBUCKET_CLONE_DIR}              | The path where project has been cloned. Typically its set by bitbucket pipelines engine. |
-| BITBUCKET_DEPLOYMENT_ENVIRONMENT | Yes      | ${BITBUCKET_DEPLOYMENT_ENVIRONMENT} | The bitbucket deployment environment being used. This value will be used as --config-env parameter and must match the corresponding section within samconfig.toml. Typically its set by bitbucket pipelines engine. |
-| AWS_REGION                       | Yes      | ${AWS_REGION}                       | The AWS Region where the template should be deployed |
-| PIPELINE_USER_ACCESS_KEY_ID      | Yes      | ${PIPELINE_USER_ACCESS_KEY_ID}      | AWS Credentials used to by pipeline execution. This is created by sam pipeline bootstrap command. |
-| PIPELINE_USER_SECRET_ACCESS_KEY  | Yes      | ${PIPELINE_USER_SECRET_ACCESS_KEY}  | AWS Credentials used to by pipeline execution. This is created by sam pipeline bootstrap command. |
-| PIPELINE_EXECUTION_ROLE          | Yes      | ${PIPELINE_EXECUTION_ROLE}          | ARN of the role to be used within pipeline execution. This role is created by sam pipeline bootstrap command. |
-| SAM_TEMPLATE                     | Yes      | ${SAM_TEMPLATE}                     | Name of the sam template file. Tipically set to template.yaml |
-| SAM_CONFIG_FILE                  | Yes      | ${SAM_CONFIG_FILE}                  | Name of the sam config file. Tipically set to samconfig.toml |
-| CF_STACK_NAME                    | Yes      | ${CF_STACK_NAME}                    | The name of the cloudformation stack to be deployed from this pipe execution |
-| CF_EXECUTION_ROLE                | Yes      | ${CF_EXECUTION_ROLE}                | ARN of the role to be used within cloudformation execution. This role is created by sam pipeline bootstrap command. |
-| ARTIFACTS_BUCKET                 | Yes      | ${ARTIFACTS_BUCKET}                 | Name of the bucket where artifacts will be uploaded for deployment |
+| Variable                         | Required | Default Value                                                               | Usage |
+| :------------------------------- | :------: | :-------------------------------------------------------------------------- | ----- |
+| BITBUCKET_CLONE_DIR              | Yes      | ${BITBUCKET_CLONE_DIR}                                                      | The path where project has been cloned. The default value sets it to the bitbucket pipelines variable. |
+| BITBUCKET_DEPLOYMENT_ENVIRONMENT | Yes      | ${BITBUCKET_DEPLOYMENT_ENVIRONMENT}                                         | The bitbucket deployment environment being used. This value will be used as --config-env parameter and must match the corresponding section within samconfig.toml. This is set set by bitbucket pipelines engine if you use the deployment option within your step. |
+| AWS_REGION                       | Yes      | ${AWS_REGION}                                                               | The AWS Region where the stack should be deployed |
+| PIPELINE_USER_ACCESS_KEY_ID      | Yes      | ${PIPELINE_USER_ACCESS_KEY_ID}                                              | AWS Credentials used to by pipeline execution. This can be created by sam pipeline bootstrap command or you can use other credentials with permissions to deploy the cloudformation stack. |
+| PIPELINE_USER_SECRET_ACCESS_KEY  | Yes      | ${PIPELINE_USER_SECRET_ACCESS_KEY}                                          | AWS Credentials used to by pipeline execution. This can be created by sam pipeline bootstrap command or you can use other credentials with permissions to deploy the cloudformation stack. |
+| PIPELINE_EXECUTION_ROLE          | Yes      | ${PIPELINE_EXECUTION_ROLE}                                                  | ARN of the role to be used within pipeline execution. This role is created by sam pipeline bootstrap command. |
+| SAM_TEMPLATE                     | Yes      | template.yaml                                                               | Name of the sam template file. Tipically set to template.yaml |
+| SAM_CONFIG_FILE                  | Yes      | samconfig.toml                                                              | Name of the sam config file. Tipically set to samconfig.toml |
+| CF_STACK_NAME                    | Yes      | ${CF_STACK_NAME}                                                            | The name of the cloudformation stack to be deployed from this pipe execution |
+| CF_EXECUTION_ROLE                | Yes      | ${CF_EXECUTION_ROLE}                                                        | ARN of the role to be used within cloudformation execution. This role is created by sam pipeline bootstrap command. |
+| ARTIFACTS_BUCKET                 | Yes      | ${ARTIFACTS_BUCKET}                                                         | Name of the bucket where artifacts will be uploaded for deployment |
 | ARTIFACTS_BUCKET_PREFIX          | Yes      | ${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME} | Passed as argument to package and deploy commands to allow organizing deployments within the artifact bucket. |
-| CAPABILITIES                     | No       | 'NOCAPABILITIES'                    | Which IAM capabilities must be enabled: CAPABILITY_IAM, CAPABILITY_NAMED_IAM or NOCAPABILITIES (the default) are the available values |
-| DEBUG                            | No       | 'false'                             | Turn on extra debug information. | 
+| CAPABILITIES                     | No       | 'NOCAPABILITIES'                                                            | Which IAM capabilities must be enabled: CAPABILITY_IAM, CAPABILITY_NAMED_IAM or NOCAPABILITIES (the default) are the available values |
+| DEBUG                            | No       | 'false'                                                                     | Turn on extra debug information. | 
+| DELETE                           | No       | 'false'                                                                     | When enabled, runs the sam delete command instead of regular build/package/deploy commands. | 
 
 The default values that references environment variables, exception made to those starting as "BITBUCKET_*", should be set either within bitbucket environment variables or directly withing the pipeline definition.
 
+## Details
+
+This pipe was developed to allow using specific aws sam command line options that are not available in the AWS SAM default pipe.
+There are two distinct modes you can use: deploy (default) and delete.
+For now, the parameters you must pass on both modes are the same, even if some is not used in delete mode (maybe a future enhancement??)
+
+### Deployment mode
+
+In this mode, the default, the pipe executes all three commands in sequence:
+
+1. sam build
+
+```bash
+sam build ${PARAM_DEBUG} --template $SAM_TEMPLATE --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}"
+```
+
+2. sam package
+
+```bash
+sam package ${PARAM_DEBUG} --s3-bucket "${ARTIFACTS_BUCKET}" --s3-prefix "${ARTIFACTS_BUCKET_PREFIX}" --region "${AWS_REGION}" --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" --output-template-file ${OUTPUT_TEMPLATE_FILE}
+```
+
+3. sam deploy
+
+```bash
+run sam deploy ${PARAM_DEBUG} --s3-bucket "${ARTIFACTS_BUCKET}" --s3-prefix "${ARTIFACTS_BUCKET_PREFIX}" --region "${AWS_REGION}" --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" --template ${OUTPUT_TEMPLATE_FILE} --stack-name ${CF_STACK_NAME} --role-arn "${CF_EXECUTION_ROLE}" ${CAPABILITY_OPTION} --no-fail-on-empty-changeset
+```
+
+You can customize which aws sam options to use through parameters passed to the pipe.
+
+### Delete mode
+
+To enable the delete mode you must pass DELETE="true" when invoking the pipe.
+The command executed is:
+
+1. sam delete
+
+```bash
+    run sam delete  ${PARAM_DEBUG} --s3-bucket "${ARTIFACTS_BUCKET}" --s3-prefix "${ARTIFACTS_BUCKET_PREFIX}" --region "${AWS_REGION}" --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" --stack-name ${CF_STACK_NAME} --no-prompts
+```
+
 ## Prerequisites
 
-This pipe was writen with the idea that you had ran sam pipeline bootstrap command anytime before setting up your pipeline. Almost all variables can be derived directly from the outputs generated by that command.
+We strongly recommend that you had ran sam pipeline bootstrap command anytime before setting up your pipeline. 
+Almost all variables can be derived directly from the outputs generated by that command.
+But you can setup your own users, roles and IAM permissions, considering that those roles can deploy aws cloudformation/sam applications and upload to the corresponding S3 buckets.
 
 ## Examples
 
@@ -71,7 +124,7 @@ script:
 ```
 
 ## Support
-If you'd like help with this pipe, or you have an issue or feature request, let us know on our github repository.
+If you'd like help with this pipe, or you have an issue or feature request, let us know on our [github repository](https://github.com/trustep/io.trustep.bitbucket.pipes.aws-sam-custom-deploy).
 
 If you're reporting an issue, please include:
 
