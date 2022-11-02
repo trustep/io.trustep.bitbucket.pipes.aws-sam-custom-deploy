@@ -1,0 +1,4 @@
+version=0.1
+[qa.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = " HelloWorldMessage=\"Hello World from AWS SAM samconfig.toml\" "

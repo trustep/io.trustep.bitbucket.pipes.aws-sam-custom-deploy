@@ -1,0 +1,536 @@
+#trustep/aws-sam-custom-deploy:1.0.0-$(date "+%Y%m%d-%H%M%S")
+name: Pipeline
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'release**'
+      - 'develop'
+      - 'feature**'
+  delete:
+    branches:
+      - 'feature**'
+
+env:
+  SAM_CLI_TELEMETRY: 0
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      FEATURE_STACK_NAME: ${{ steps.setupVars.outputs.FEATURE_STACK_NAME }}
+      NEXT_RELEASE_BASE_VERSION: ${{ steps.setupVars.outputs.NEXT_RELEASE_BASE_VERSION }}
+      SAM_CONFIG_FILE: ${{ steps.setupVars.outputs.SAM_CONFIG_FILE }}
+      SAM_TEMPLATE: ${{ steps.setupVars.outputs.SAM_TEMPLATE }}
+      OUTPUT_TEMPLATE_FILE: ${{ steps.setupVars.outputs.OUTPUT_TEMPLATE_FILE }}
+      ARTIFACTS_BUCKET: ${{ steps.setupVars.outputs.ARTIFACTS_BUCKET }}
+      CF_STACK_NAME: ${{ steps.setupVars.outputs.CF_STACK_NAME }}
+      BITBUCKET_DEPLOYMENT_ENVIRONMENT: ${{ steps.setupVars.outputs.BITBUCKET_DEPLOYMENT_ENVIRONMENT }}
+      IMAGE_FET: ${{steps.setupVars.outputs.IMAGE_FET}}
+      IMAGE_DEV: ${{steps.setupVars.outputs.IMAGE_DEV}}
+      IMAGE_REL: ${{steps.setupVars.outputs.IMAGE_REL}}
+      IMAGE_LAT: ${{steps.setupVars.outputs.IMAGE_LAT}}
+      BITBUCKET_REPO_SLUG: ${{ steps.setupVars.outputs.BITBUCKET_REPO_SLUG }}
+      ARTIFACTS_BUCKET_PREFIX: ${{ steps.setupVars.outputs.ARTIFACTS_BUCKET_PREFIX }}
+      BITBUCKET_CLONE_DIR: ${{ steps.setupVars.outputs.BITBUCKET_CLONE_DIR }}
+      LOCAL_PATH: ${{ steps.setupVars.outputs.LOCAL_PATH }}
+    steps:
+      - id: setupVars
+        name: Setup Environment Variables
+        env:
+          NEXT_RELEASE_BASE_VERSION: 1.0.0
+          FEATURE_BRANCH_NAME: ${{github.event.ref}}
+          SAM_CONFIG_FILE: samconfig.toml
+          SAM_TEMPLATE: template.yaml
+          OUTPUT_TEMPLATE_FILE: packaged-template.yaml
+          ARTIFACTS_BUCKET: io.trustep.manager.cf.templates
+          CAPABILITIES: CAPABILITY_IAM
+          CF_STACK_NAME: aws-sam-custom-deploy
+          BITBUCKET_DEPLOYMENT_ENVIRONMENT: qa
+          BITBUCKET_REPO_SLUG: aws-sam-custom-deploy
+          BITBUCKET_CLONE_DIR: /project
+        run: |
+          FEATURE_STACK_NAME=$(echo ${FEATURE_BRANCH_NAME##*/} | tr -cd '[a-zA-Z0-9-]')
+          IMAGE_FET="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}-feat-${FEATURE_STACK_NAME}"
+          IMAGE_DEV="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}-$(date "+%Y%m%d-%H%M%S")"
+          IMAGE_REL="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}"
+          IMAGE_LAT="${BITBUCKET_REPO_SLUG}:latest"
+          ARTIFACTS_BUCKET_PREFIX="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}"
+          LOCAL_PATH=$(pwd)/src/test/docker/resources
+
+          echo "FEATURE_STACK_NAME=${FEATURE_STACK_NAME}" >> $GITHUB_OUTPUT
+          echo "NEXT_RELEASE_BASE_VERSION=${NEXT_RELEASE_BASE_VERSION}" >> $GITHUB_OUTPUT
+          echo "SAM_CONFIG_FILE=${SAM_CONFIG_FILE}" >> $GITHUB_OUTPUT
+          echo "SAM_TEMPLATE=${SAM_TEMPLATE}" >> $GITHUB_OUTPUT
+          echo "OUTPUT_TEMPLATE_FILE=${OUTPUT_TEMPLATE_FILE}" >> $GITHUB_OUTPUT
+          echo "ARTIFACTS_BUCKET=${ARTIFACTS_BUCKET}" >> $GITHUB_OUTPUT
+          echo "CF_STACK_NAME=${CF_STACK_NAME}" >> $GITHUB_OUTPUT
+          echo "BITBUCKET_DEPLOYMENT_ENVIRONMENT=${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" >> $GITHUB_OUTPUT
+          echo "IMAGE_FET=${IMAGE_FET}" >> $GITHUB_OUTPUT
+          echo "IMAGE_DEV=${IMAGE_DEV}" >> $GITHUB_OUTPUT
+          echo "IMAGE_REL=${IMAGE_REL}" >> $GITHUB_OUTPUT
+          echo "IMAGE_LAT=${IMAGE_LAT}" >> $GITHUB_OUTPUT
+          echo "BITBUCKET_REPO_SLUG=${BITBUCKET_REPO_SLUG}" >> $GITHUB_OUTPUT
+          echo "ARTIFACTS_BUCKET_PREFIX=${ARTIFACTS_BUCKET_PREFIX}" >> $GITHUB_OUTPUT
+          echo "BITBUCKET_CLONE_DIR=${BITBUCKET_CLONE_DIR}" >> $GITHUB_OUTPUT
+          echo "LOCAL_PATH=${LOCAL_PATH}" >> $GITHUB_OUTPUT
+  
+  deploy-feature:
+    if: startsWith(github.ref, 'refs/heads/feature') && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      CF_EXECUTION_ROLE: ${{ secrets.CLOUDFORMATION_EXECUTION_ROLE }}
+      PIPELINE_EXECUTION_ROLE: ${{ secrets.PIPELINE_EXECUTION_ROLE }}
+      PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      DOCKER_HUB_USERNAME: ${{secrets.DOCKER_HUB_USERNAME}}
+      DOCKER_HUB_PERSONAL_ACCESS_TOKEN: ${{secrets.DOCKER_HUB_PERSONAL_ACCESS_TOKEN}}
+      FEATURE_STACK_NAME: ${{ needs.prepare.outputs.FEATURE_STACK_NAME }}
+      NEXT_RELEASE_BASE_VERSION: ${{ needs.prepare.outputs.NEXT_RELEASE_BASE_VERSION }}
+      SAM_CONFIG_FILE: ${{ needs.prepare.outputs.SAM_CONFIG_FILE }}
+      SAM_TEMPLATE: ${{ needs.prepare.outputs.SAM_TEMPLATE }}
+      OUTPUT_TEMPLATE_FILE: ${{ needs.prepare.outputs.OUTPUT_TEMPLATE_FILE }}
+      ARTIFACTS_BUCKET: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET }}
+      CF_STACK_NAME: ${{ needs.prepare.outputs.CF_STACK_NAME }}
+      BITBUCKET_DEPLOYMENT_ENVIRONMENT: ${{ needs.prepare.outputs.BITBUCKET_DEPLOYMENT_ENVIRONMENT }}
+      IMAGE_FET: ${{needs.prepare.outputs.IMAGE_FET}}
+      IMAGE_DEV: ${{needs.prepare.outputs.IMAGE_DEV}}
+      IMAGE_REL: ${{needs.prepare.outputs.IMAGE_REL}}
+      IMAGE_LAT: ${{needs.prepare.outputs.IMAGE_LAT}}
+      BITBUCKET_REPO_SLUG: ${{ needs.prepare.outputs.BITBUCKET_REPO_SLUG }}
+      ARTIFACTS_BUCKET_PREFIX: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET_PREFIX }}
+      BITBUCKET_CLONE_DIR: ${{ needs.prepare.outputs.BITBUCKET_CLONE_DIR }}
+      LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Login to Docker Hub
+        run: |
+          echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
+      - name: Build the Docker Image
+        run: |
+          cd src/main/docker
+          docker build . --file Dockerfile --tag "${DOCKER_HUB_USERNAME}/${IMAGE_FET}"
+          cd ../../..
+      - name: Test Deployment of HelloWorld SAM Stack
+        run: |
+          docker run --rm \
+            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
+            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
+            -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
+            -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
+            -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
+            -e CF_STACK_NAME="${CF_STACK_NAME}" \
+            -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
+            -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${ARTIFACTS_BUCKET_PREFIX}" \
+            -e AWS_REGION="${AWS_REGION}" \
+            -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
+            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
+            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
+            -e CAPABILITIES="${CAPABILITIES}" \
+            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
+            "${DOCKER_HUB_USERNAME}/${IMAGE_FET}"
+      - name: Check if HelloWorld SAM Stack got deployed correctly
+        run: |
+          echo "Discovering Hello World Lambda Name"
+          LAMBDA_NAME=`aws cloudformation describe-stack-resources --stack-name aws-sam-custom-deploy --logical-resource-id HelloWorld --output text --query "StackResources[0].PhysicalResourceId"`
+          echo "Invoking Hello World Lambda"
+          aws lambda invoke --function-name ${LAMBDA_NAME} --log-type None msg.json
+          echo "Checking Hello World Lambda Message"
+          LAMBDA_MSG=$(cat msg.json | jq -r .msg)
+          EXPECTED_MSG="Hello World from AWS SAM samconfig.toml"
+          if [[ ${LAMBDA_MSG} == ${EXPECTED_MSG} ]]
+          then
+            echo "Message returned by Hello World lambda returned as expected: ${LAMBDA_MSG}"
+          else
+            echo "Message returned by Hello World lambda is not equals as expected."
+            echo "Expected: ${EXPECTED_MSG}"
+            echo "Returned: ${LAMBDA_MSG}"
+            exit 1
+          fi
+      - name: Cleanup HelloWorld SAM Stack
+        run: |
+          docker run --rm \
+            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
+            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
+            -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
+            -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
+            -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
+            -e CF_STACK_NAME="${CF_STACK_NAME}" \
+            -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
+            -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${ARTIFACTS_BUCKET_PREFIX}" \
+            -e AWS_REGION="${AWS_REGION}" \
+            -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
+            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
+            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
+            -e CAPABILITIES="${CAPABILITIES}" \
+            -e DELETE="true" \
+            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
+            "${DOCKER_HUB_USERNAME}/${IMAGE_FET}"
+      - name: Push image to Docker Hub
+        run: |
+          docker push "${DOCKER_HUB_USERNAME}/${IMAGE_FET}"
+
+  undeploy-feature:
+    if: startsWith(github.event.ref, 'feature') && github.event_name == 'delete'
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      CF_EXECUTION_ROLE: ${{ secrets.CLOUDFORMATION_EXECUTION_ROLE }}
+      PIPELINE_EXECUTION_ROLE: ${{ secrets.PIPELINE_EXECUTION_ROLE }}
+      PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      DOCKER_HUB_USERNAME: ${{secrets.DOCKER_HUB_USERNAME}}
+      DOCKER_HUB_PERSONAL_ACCESS_TOKEN: ${{secrets.DOCKER_HUB_PERSONAL_ACCESS_TOKEN}}
+      FEATURE_STACK_NAME: ${{ needs.prepare.outputs.FEATURE_STACK_NAME }}
+      NEXT_RELEASE_BASE_VERSION: ${{ needs.prepare.outputs.NEXT_RELEASE_BASE_VERSION }}
+      SAM_CONFIG_FILE: ${{ needs.prepare.outputs.SAM_CONFIG_FILE }}
+      SAM_TEMPLATE: ${{ needs.prepare.outputs.SAM_TEMPLATE }}
+      OUTPUT_TEMPLATE_FILE: ${{ needs.prepare.outputs.OUTPUT_TEMPLATE_FILE }}
+      ARTIFACTS_BUCKET: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET }}
+      CF_STACK_NAME: ${{ needs.prepare.outputs.CF_STACK_NAME }}
+      BITBUCKET_DEPLOYMENT_ENVIRONMENT: ${{ needs.prepare.outputs.BITBUCKET_DEPLOYMENT_ENVIRONMENT }}
+      IMAGE_FET: ${{needs.prepare.outputs.IMAGE_FET}}
+      IMAGE_DEV: ${{needs.prepare.outputs.IMAGE_DEV}}
+      IMAGE_REL: ${{needs.prepare.outputs.IMAGE_REL}}
+      IMAGE_LAT: ${{needs.prepare.outputs.IMAGE_LAT}}
+      BITBUCKET_REPO_SLUG: ${{ needs.prepare.outputs.BITBUCKET_REPO_SLUG }}
+      ARTIFACTS_BUCKET_PREFIX: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET_PREFIX }}
+      BITBUCKET_CLONE_DIR: ${{ needs.prepare.outputs.BITBUCKET_CLONE_DIR }}
+      LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
+    steps:
+      - name: Login to Docker Hub
+        run: |
+          echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
+      - name: Delete image from Docker Hub
+        run: |
+          echo "Generating Docker Hub Credentials"
+          DOCKER_HUB_TOKEN=$(curl --silent -X POST -H "Content-Type: application/json" -d "{\"username\": \"trustep\", \"password\": \"${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}\"}" https://hub.docker.com/v2/users/login)
+          DOCKER_HUB_BEARER=$(echo ${DOCKER_HUB_TOKEN}|jq -r ".token")
+          DOCKER_IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${DOCKER_HUB_USERNAME}/${IMAGE_FET}" |awk -F"@" '{print $2}')
+          echo "Deleting docker image from Docker Hub"
+          curl --location --silent -X POST 'https://hub.docker.com/v2/namespaces/trustep/delete-images' --header "Authorization: Bearer ${DOCKER_HUB_BEARER}" --header 'Content-Type: application/json' -d "{\"dry_run\": false, \"manifests\": [{\"repository\": \"aws-sam-custom-deploy\", \"digest\": \"${DOCKER_IMAGE_DIGEST}\" }]}"
+
+  deploy-develop:
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      CF_EXECUTION_ROLE: ${{ secrets.CLOUDFORMATION_EXECUTION_ROLE }}
+      PIPELINE_EXECUTION_ROLE: ${{ secrets.PIPELINE_EXECUTION_ROLE }}
+      PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      DOCKER_HUB_USERNAME: ${{secrets.DOCKER_HUB_USERNAME}}
+      DOCKER_HUB_PERSONAL_ACCESS_TOKEN: ${{secrets.DOCKER_HUB_PERSONAL_ACCESS_TOKEN}}
+      FEATURE_STACK_NAME: ${{ needs.prepare.outputs.FEATURE_STACK_NAME }}
+      NEXT_RELEASE_BASE_VERSION: ${{ needs.prepare.outputs.NEXT_RELEASE_BASE_VERSION }}
+      SAM_CONFIG_FILE: ${{ needs.prepare.outputs.SAM_CONFIG_FILE }}
+      SAM_TEMPLATE: ${{ needs.prepare.outputs.SAM_TEMPLATE }}
+      OUTPUT_TEMPLATE_FILE: ${{ needs.prepare.outputs.OUTPUT_TEMPLATE_FILE }}
+      ARTIFACTS_BUCKET: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET }}
+      CF_STACK_NAME: ${{ needs.prepare.outputs.CF_STACK_NAME }}
+      BITBUCKET_DEPLOYMENT_ENVIRONMENT: ${{ needs.prepare.outputs.BITBUCKET_DEPLOYMENT_ENVIRONMENT }}
+      IMAGE_FET: ${{needs.prepare.outputs.IMAGE_FET}}
+      IMAGE_DEV: ${{needs.prepare.outputs.IMAGE_DEV}}
+      IMAGE_REL: ${{needs.prepare.outputs.IMAGE_REL}}
+      IMAGE_LAT: ${{needs.prepare.outputs.IMAGE_LAT}}
+      BITBUCKET_REPO_SLUG: ${{ needs.prepare.outputs.BITBUCKET_REPO_SLUG }}
+      ARTIFACTS_BUCKET_PREFIX: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET_PREFIX }}
+      BITBUCKET_CLONE_DIR: ${{ needs.prepare.outputs.BITBUCKET_CLONE_DIR }}
+      LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Login to Docker Hub
+        run: |
+          echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
+      - name: Build the Docker Image
+        run: |
+          cd src/main/docker
+          docker build . --file Dockerfile --tag "${DOCKER_HUB_USERNAME}/${IMAGE_DEV}"
+          cd ../../..
+      - name: Test Deployment of HelloWorld SAM Stack
+        run: |
+          docker run --rm \
+            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
+            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
+            -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
+            -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
+            -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
+            -e CF_STACK_NAME="${CF_STACK_NAME}" \
+            -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
+            -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${ARTIFACTS_BUCKET_PREFIX}" \
+            -e AWS_REGION="${AWS_REGION}" \
+            -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
+            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
+            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
+            -e CAPABILITIES="${CAPABILITIES}" \
+            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
+            "${DOCKER_HUB_USERNAME}/${IMAGE_DEV}"
+      - name: Check if HelloWorld SAM Stack got deployed correctly
+        run: |
+          echo "Discovering Hello World Lambda Name"
+          LAMBDA_NAME=`aws cloudformation describe-stack-resources --stack-name aws-sam-custom-deploy --logical-resource-id HelloWorld --output text --query "StackResources[0].PhysicalResourceId"`
+          echo "Invoking Hello World Lambda"
+          aws lambda invoke --function-name ${LAMBDA_NAME} --log-type None msg.json
+          echo "Checking Hello World Lambda Message"
+          LAMBDA_MSG=$(cat msg.json | jq -r .msg)
+          EXPECTED_MSG="Hello World from AWS SAM samconfig.toml"
+          if [[ ${LAMBDA_MSG} == ${EXPECTED_MSG} ]]
+          then
+            echo "Message returned by Hello World lambda returned as expected: ${LAMBDA_MSG}"
+          else
+            echo "Message returned by Hello World lambda is not equals as expected."
+            echo "Expected: ${EXPECTED_MSG}"
+            echo "Returned: ${LAMBDA_MSG}"
+            exit 1
+          fi
+      - name: Cleanup HelloWorld SAM Stack
+        run: |
+          docker run --rm \
+            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
+            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
+            -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
+            -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
+            -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
+            -e CF_STACK_NAME="${CF_STACK_NAME}" \
+            -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
+            -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${ARTIFACTS_BUCKET_PREFIX}" \
+            -e AWS_REGION="${AWS_REGION}" \
+            -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
+            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
+            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
+            -e CAPABILITIES="${CAPABILITIES}" \
+            -e DELETE="true" \
+            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
+            "${DOCKER_HUB_USERNAME}/${IMAGE_DEV}"
+      - name: Push image to Docker Hub
+        run: |
+          docker push "${DOCKER_HUB_USERNAME}/${IMAGE_DEV}"
+
+  deploy-release:
+    if: startsWith(github.ref, 'refs/heads/release') && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      CF_EXECUTION_ROLE: ${{ secrets.CLOUDFORMATION_EXECUTION_ROLE }}
+      PIPELINE_EXECUTION_ROLE: ${{ secrets.PIPELINE_EXECUTION_ROLE }}
+      PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      DOCKER_HUB_USERNAME: ${{secrets.DOCKER_HUB_USERNAME}}
+      DOCKER_HUB_PERSONAL_ACCESS_TOKEN: ${{secrets.DOCKER_HUB_PERSONAL_ACCESS_TOKEN}}
+      FEATURE_STACK_NAME: ${{ needs.prepare.outputs.FEATURE_STACK_NAME }}
+      NEXT_RELEASE_BASE_VERSION: ${{ needs.prepare.outputs.NEXT_RELEASE_BASE_VERSION }}
+      SAM_CONFIG_FILE: ${{ needs.prepare.outputs.SAM_CONFIG_FILE }}
+      SAM_TEMPLATE: ${{ needs.prepare.outputs.SAM_TEMPLATE }}
+      OUTPUT_TEMPLATE_FILE: ${{ needs.prepare.outputs.OUTPUT_TEMPLATE_FILE }}
+      ARTIFACTS_BUCKET: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET }}
+      CF_STACK_NAME: ${{ needs.prepare.outputs.CF_STACK_NAME }}
+      BITBUCKET_DEPLOYMENT_ENVIRONMENT: ${{ needs.prepare.outputs.BITBUCKET_DEPLOYMENT_ENVIRONMENT }}
+      IMAGE_FET: ${{needs.prepare.outputs.IMAGE_FET}}
+      IMAGE_DEV: ${{needs.prepare.outputs.IMAGE_DEV}}
+      IMAGE_REL: ${{needs.prepare.outputs.IMAGE_REL}}
+      IMAGE_LAT: ${{needs.prepare.outputs.IMAGE_LAT}}
+      BITBUCKET_REPO_SLUG: ${{ needs.prepare.outputs.BITBUCKET_REPO_SLUG }}
+      ARTIFACTS_BUCKET_PREFIX: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET_PREFIX }}
+      BITBUCKET_CLONE_DIR: ${{ needs.prepare.outputs.BITBUCKET_CLONE_DIR }}
+      LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Login to Docker Hub
+        run: |
+          echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
+      - name: Build the Docker Image
+        run: |
+          cd src/main/docker
+          docker build . --file Dockerfile --tag "${DOCKER_HUB_USERNAME}/${IMAGE_REL}"
+          cd ../../..
+      - name: Test Deployment of HelloWorld SAM Stack
+        run: |
+          docker run --rm \
+            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
+            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
+            -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
+            -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
+            -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
+            -e CF_STACK_NAME="${CF_STACK_NAME}" \
+            -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
+            -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${ARTIFACTS_BUCKET_PREFIX}" \
+            -e AWS_REGION="${AWS_REGION}" \
+            -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
+            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
+            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
+            -e CAPABILITIES="${CAPABILITIES}" \
+            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
+            "${DOCKER_HUB_USERNAME}/${IMAGE_REL}"
+      - name: Check if HelloWorld SAM Stack got deployed correctly
+        run: |
+          echo "Discovering Hello World Lambda Name"
+          LAMBDA_NAME=`aws cloudformation describe-stack-resources --stack-name aws-sam-custom-deploy --logical-resource-id HelloWorld --output text --query "StackResources[0].PhysicalResourceId"`
+          echo "Invoking Hello World Lambda"
+          aws lambda invoke --function-name ${LAMBDA_NAME} --log-type None msg.json
+          echo "Checking Hello World Lambda Message"
+          LAMBDA_MSG=$(cat msg.json | jq -r .msg)
+          EXPECTED_MSG="Hello World from AWS SAM samconfig.toml"
+          if [[ ${LAMBDA_MSG} == ${EXPECTED_MSG} ]]
+          then
+            echo "Message returned by Hello World lambda returned as expected: ${LAMBDA_MSG}"
+          else
+            echo "Message returned by Hello World lambda is not equals as expected."
+            echo "Expected: ${EXPECTED_MSG}"
+            echo "Returned: ${LAMBDA_MSG}"
+            exit 1
+          fi
+      - name: Cleanup HelloWorld SAM Stack
+        run: |
+          docker run --rm \
+            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
+            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
+            -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
+            -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
+            -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
+            -e CF_STACK_NAME="${CF_STACK_NAME}" \
+            -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
+            -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${ARTIFACTS_BUCKET_PREFIX}" \
+            -e AWS_REGION="${AWS_REGION}" \
+            -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
+            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
+            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
+            -e CAPABILITIES="${CAPABILITIES}" \
+            -e DELETE="true" \
+            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
+            "${DOCKER_HUB_USERNAME}/${IMAGE_REL}"
+      - name: Push image to Docker Hub
+        run: |
+          docker push "${DOCKER_HUB_USERNAME}/${IMAGE_REL}"
+
+  deploy-main:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      CF_EXECUTION_ROLE: ${{ secrets.CLOUDFORMATION_EXECUTION_ROLE }}
+      PIPELINE_EXECUTION_ROLE: ${{ secrets.PIPELINE_EXECUTION_ROLE }}
+      PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      DOCKER_HUB_USERNAME: ${{secrets.DOCKER_HUB_USERNAME}}
+      DOCKER_HUB_PERSONAL_ACCESS_TOKEN: ${{secrets.DOCKER_HUB_PERSONAL_ACCESS_TOKEN}}
+      FEATURE_STACK_NAME: ${{ needs.prepare.outputs.FEATURE_STACK_NAME }}
+      NEXT_RELEASE_BASE_VERSION: ${{ needs.prepare.outputs.NEXT_RELEASE_BASE_VERSION }}
+      SAM_CONFIG_FILE: ${{ needs.prepare.outputs.SAM_CONFIG_FILE }}
+      SAM_TEMPLATE: ${{ needs.prepare.outputs.SAM_TEMPLATE }}
+      OUTPUT_TEMPLATE_FILE: ${{ needs.prepare.outputs.OUTPUT_TEMPLATE_FILE }}
+      ARTIFACTS_BUCKET: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET }}
+      CF_STACK_NAME: ${{ needs.prepare.outputs.CF_STACK_NAME }}
+      BITBUCKET_DEPLOYMENT_ENVIRONMENT: ${{ needs.prepare.outputs.BITBUCKET_DEPLOYMENT_ENVIRONMENT }}
+      IMAGE_FET: ${{needs.prepare.outputs.IMAGE_FET}}
+      IMAGE_DEV: ${{needs.prepare.outputs.IMAGE_DEV}}
+      IMAGE_REL: ${{needs.prepare.outputs.IMAGE_REL}}
+      IMAGE_LAT: ${{needs.prepare.outputs.IMAGE_LAT}}
+      BITBUCKET_REPO_SLUG: ${{ needs.prepare.outputs.BITBUCKET_REPO_SLUG }}
+      ARTIFACTS_BUCKET_PREFIX: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET_PREFIX }}
+      BITBUCKET_CLONE_DIR: ${{ needs.prepare.outputs.BITBUCKET_CLONE_DIR }}
+      LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Login to Docker Hub
+        run: |
+          echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
+      - name: Build the Docker Image
+        run: |
+          cd src/main/docker
+          docker build . --file Dockerfile --tag "${DOCKER_HUB_USERNAME}/${IMAGE_LAT}"
+          cd ../../..
+      - name: Test Deployment of HelloWorld SAM Stack
+        run: |
+          docker run --rm \
+            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
+            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
+            -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
+            -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
+            -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
+            -e CF_STACK_NAME="${CF_STACK_NAME}" \
+            -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
+            -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${ARTIFACTS_BUCKET_PREFIX}" \
+            -e AWS_REGION="${AWS_REGION}" \
+            -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
+            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
+            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
+            -e CAPABILITIES="${CAPABILITIES}" \
+            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
+            "${DOCKER_HUB_USERNAME}/${IMAGE_LAT}"
+      - name: Check if HelloWorld SAM Stack got deployed correctly
+        run: |
+          echo "Discovering Hello World Lambda Name"
+          LAMBDA_NAME=`aws cloudformation describe-stack-resources --stack-name aws-sam-custom-deploy --logical-resource-id HelloWorld --output text --query "StackResources[0].PhysicalResourceId"`
+          echo "Invoking Hello World Lambda"
+          aws lambda invoke --function-name ${LAMBDA_NAME} --log-type None msg.json
+          echo "Checking Hello World Lambda Message"
+          LAMBDA_MSG=$(cat msg.json | jq -r .msg)
+          EXPECTED_MSG="Hello World from AWS SAM samconfig.toml"
+          if [[ ${LAMBDA_MSG} == ${EXPECTED_MSG} ]]
+          then
+            echo "Message returned by Hello World lambda returned as expected: ${LAMBDA_MSG}"
+          else
+            echo "Message returned by Hello World lambda is not equals as expected."
+            echo "Expected: ${EXPECTED_MSG}"
+            echo "Returned: ${LAMBDA_MSG}"
+            exit 1
+          fi
+      - name: Cleanup HelloWorld SAM Stack
+        run: |
+          docker run --rm \
+            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
+            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
+            -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
+            -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
+            -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
+            -e CF_STACK_NAME="${CF_STACK_NAME}" \
+            -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
+            -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${ARTIFACTS_BUCKET_PREFIX}" \
+            -e AWS_REGION="${AWS_REGION}" \
+            -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
+            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
+            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
+            -e CAPABILITIES="${CAPABILITIES}" \
+            -e DELETE="true" \
+            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
+            "${DOCKER_HUB_USERNAME}/${IMAGE_LAT}"
+      - name: Push image to Docker Hub
+        run: |
+          docker push "${DOCKER_HUB_USERNAME}/${IMAGE_LAT}"

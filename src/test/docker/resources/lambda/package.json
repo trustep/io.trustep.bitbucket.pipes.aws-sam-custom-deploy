@@ -1,0 +1,21 @@
+{
+  "name": "aws-sam-custom-deploy-test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/trustep/io.trustep.bitbucket.pipes.aws-sam-custom-deploy.git"
+  },
+  "author": "Trustep",
+  "license": "Apache 2.0",
+  "bugs": {
+    "url": "https://github.com/trustep/io.trustep.bitbucket.pipes.aws-sam-custom-deploy/issues"
+  },
+  "homepage": "https://github.com/trustep/io.trustep.bitbucket.pipes.aws-sam-custom-deploy#readme"
+}
