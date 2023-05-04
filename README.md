@@ -55,6 +55,7 @@ Add the following snippet to the script section of your `bitbucket-pipelines.yml
 | CAPABILITIES                     | No       | 'NOCAPABILITIES'                                                            | Which IAM capabilities must be enabled: CAPABILITY_IAM, CAPABILITY_NAMED_IAM or NOCAPABILITIES (the default) are the available values |
 | DEBUG                            | No       | 'false'                                                                     | Turn on extra debug information. | 
 | DELETE                           | No       | 'false'                                                                     | When enabled, runs the sam delete command instead of regular build/package/deploy commands. | 
+| SKIP_CHANGESET_EXECUTION         | No       | 'false'                                                                     | When enabled, adds to the sam command the option --no-execute-changeset. Only applies to Deployment mode. | 
 
 The default values that references environment variables, exception made to those starting as "BITBUCKET_*", should be set either within bitbucket environment variables or directly withing the pipeline definition.
 

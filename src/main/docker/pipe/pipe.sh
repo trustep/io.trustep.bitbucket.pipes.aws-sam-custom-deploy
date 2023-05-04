@@ -46,6 +46,13 @@ else
     export PARAM_DEBUG=""
 fi
 
+export SKIP_CHANGESET_EXECUTION=${SKIP_CHANGESET_EXECUTION:="false"}
+if [[ "${SKIP_CHANGESET_EXECUTION}" == "true" ]]; then
+    export NO_EXECUTE_CHANGESET="--no-execute-changeset"
+else
+    export NO_EXECUTE_CHANGESET=""
+fi
+
 export DELETE=${DELETE:="false"}
 
 info "BITBUCKET_CLONE_DIR = ${BITBUCKET_CLONE_DIR}"
@@ -67,7 +74,7 @@ if [[ "${DELETE}" != "true" ]]; then
     run sam package ${PARAM_DEBUG} --s3-bucket "${ARTIFACTS_BUCKET}" --s3-prefix "${ARTIFACTS_BUCKET_PREFIX}" --region "${AWS_REGION}" --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" --output-template-file ${OUTPUT_TEMPLATE_FILE}
 
     info "Running sam deploy command..."
-    run sam deploy  ${PARAM_DEBUG} --s3-bucket "${ARTIFACTS_BUCKET}" --s3-prefix "${ARTIFACTS_BUCKET_PREFIX}" --region "${AWS_REGION}" --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}"             --template ${OUTPUT_TEMPLATE_FILE} --stack-name ${CF_STACK_NAME} --role-arn "${CF_EXECUTION_ROLE}" ${CAPABILITY_OPTION} --no-fail-on-empty-changeset
+    run sam deploy  ${PARAM_DEBUG} --s3-bucket "${ARTIFACTS_BUCKET}" --s3-prefix "${ARTIFACTS_BUCKET_PREFIX}" --region "${AWS_REGION}" --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}"             --template ${OUTPUT_TEMPLATE_FILE} --stack-name ${CF_STACK_NAME} --role-arn "${CF_EXECUTION_ROLE}" ${CAPABILITY_OPTION} --no-fail-on-empty-changeset ${NO_EXECUTE_CHANGESET}
 fi
 
 if [[ "${DELETE}" == "true" ]]; then
