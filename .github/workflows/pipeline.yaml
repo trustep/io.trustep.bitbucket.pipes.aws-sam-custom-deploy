@@ -141,7 +141,7 @@ jobs:
       - name: Check if HelloWorld SAM ChangeSet got created correctly
         run: |
           echo "Discovering Hello World ChangeSet Status"
-          ACTUAL_STATUS=`aws cloudformation list-stacks --stack-status-filter REVIEW_IN_PROGRESS --output text --query 'StackSummaries[?StackName==\`${CF_STACK_NAME}\`].StackStatus|[0]'`          
+          ACTUAL_STATUS=`aws cloudformation list-stacks --stack-status-filter REVIEW_IN_PROGRESS --output text --query 'StackSummaries[?StackName==\`aws-sam-custom-deploy\`].StackStatus|[0]'`          
           echo "Checking Hello World Lambda Message"
           EXPECTED_STATUS="REVIEW_IN_PROGRESS"
           if [[ ${ACTUAL_STATUS} == ${EXPECTED_STATUS} ]]
