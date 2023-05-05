@@ -30,3 +30,6 @@
 **/*.factorypath
 /bin/
 
+
+src/test/docker/resources/.aws-sam
+src/test/docker/resources/packaged-template.yaml

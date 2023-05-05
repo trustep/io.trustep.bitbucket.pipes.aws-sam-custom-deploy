@@ -117,7 +117,43 @@ jobs:
           cd src/main/docker
           docker build . --file Dockerfile --tag "${DOCKER_HUB_USERNAME}/${IMAGE_FET}"
           cd ../../..
-      - name: Test Deployment of HelloWorld SAM Stack
+      - name: Create Test HelloWorld SAM Stack ChangeSet
+        run: |
+          docker run --rm \
+            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
+            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
+            -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
+            -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
+            -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
+            -e CF_STACK_NAME="${CF_STACK_NAME}" \
+            -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
+            -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${ARTIFACTS_BUCKET_PREFIX}" \
+            -e AWS_REGION="${AWS_REGION}" \
+            -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
+            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
+            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
+            -e CAPABILITIES="${CAPABILITIES}" \
+            -e SKIP_CHANGESET_EXECUTION="true" \
+            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
+            "${DOCKER_HUB_USERNAME}/${IMAGE_FET}"
+      - name: Check if HelloWorld SAM ChangeSet got created correctly
+        run: |
+          echo "Discovering Hello World ChangeSet Status"
+          ACTUAL_STATUS=`aws cloudformation list-stacks --stack-status-filter REVIEW_IN_PROGRESS --output text --query 'StackSummaries[?StackName==\`aws-sam-custom-deploy\`].StackStatus|[0]'`          
+          echo "Checking Hello World Lambda Message"
+          EXPECTED_STATUS="REVIEW_IN_PROGRESS"
+          if [[ ${ACTUAL_STATUS} == ${EXPECTED_STATUS} ]]
+          then
+            echo "ChangeSet Status returned as expected: ${ACTUAL_STATUS}"
+          else
+            echo "ChangeSet Status is not as expected."
+            echo "Expected: ${EXPECTED_STATUS}"
+            echo "Returned: ${ACTUAL_STATUS}"
+            exit 1
+          fi
+      - name: Apply Test ChangeSet of HelloWorld SAM Stack
         run: |
           docker run --rm \
             -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
@@ -264,7 +300,43 @@ jobs:
           cd src/main/docker
           docker build . --file Dockerfile --tag "${DOCKER_HUB_USERNAME}/${IMAGE_DEV}"
           cd ../../..
-      - name: Test Deployment of HelloWorld SAM Stack
+      - name: Create Test HelloWorld SAM Stack ChangeSet
+        run: |
+          docker run --rm \
+            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
+            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
+            -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
+            -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
+            -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
+            -e CF_STACK_NAME="${CF_STACK_NAME}" \
+            -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
+            -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${ARTIFACTS_BUCKET_PREFIX}" \
+            -e AWS_REGION="${AWS_REGION}" \
+            -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
+            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
+            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
+            -e CAPABILITIES="${CAPABILITIES}" \
+            -e SKIP_CHANGESET_EXECUTION="true" \
+            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
+            "${DOCKER_HUB_USERNAME}/${IMAGE_DEV}"
+      - name: Check if HelloWorld SAM ChangeSet got created correctly
+        run: |
+          echo "Discovering Hello World ChangeSet Status"
+          ACTUAL_STATUS=`aws cloudformation list-stacks --stack-status-filter REVIEW_IN_PROGRESS --output text --query 'StackSummaries[?StackName==\`aws-sam-custom-deploy\`].StackStatus|[0]'`          
+          echo "Checking Hello World Lambda Message"
+          EXPECTED_STATUS="REVIEW_IN_PROGRESS"
+          if [[ ${ACTUAL_STATUS} == ${EXPECTED_STATUS} ]]
+          then
+            echo "ChangeSet Status returned as expected: ${ACTUAL_STATUS}"
+          else
+            echo "ChangeSet Status is not as expected."
+            echo "Expected: ${EXPECTED_STATUS}"
+            echo "Returned: ${ACTUAL_STATUS}"
+            exit 1
+          fi
+      - name: Apply Test ChangeSet of HelloWorld SAM Stack
         run: |
           docker run --rm \
             -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
@@ -368,7 +440,43 @@ jobs:
           cd src/main/docker
           docker build . --file Dockerfile --tag "${DOCKER_HUB_USERNAME}/${IMAGE_REL}"
           cd ../../..
-      - name: Test Deployment of HelloWorld SAM Stack
+      - name: Create Test HelloWorld SAM Stack ChangeSet
+        run: |
+          docker run --rm \
+            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
+            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
+            -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
+            -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
+            -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
+            -e CF_STACK_NAME="${CF_STACK_NAME}" \
+            -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
+            -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${ARTIFACTS_BUCKET_PREFIX}" \
+            -e AWS_REGION="${AWS_REGION}" \
+            -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
+            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
+            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
+            -e SKIP_CHANGESET_EXECUTION="true" \
+            -e CAPABILITIES="${CAPABILITIES}" \
+            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
+            "${DOCKER_HUB_USERNAME}/${IMAGE_REL}"
+      - name: Check if HelloWorld SAM ChangeSet got created correctly
+        run: |
+          echo "Discovering Hello World ChangeSet Status"
+          ACTUAL_STATUS=`aws cloudformation list-stacks --stack-status-filter REVIEW_IN_PROGRESS --output text --query 'StackSummaries[?StackName==\`aws-sam-custom-deploy\`].StackStatus|[0]'`          
+          echo "Checking Hello World Lambda Message"
+          EXPECTED_STATUS="REVIEW_IN_PROGRESS"
+          if [[ ${ACTUAL_STATUS} == ${EXPECTED_STATUS} ]]
+          then
+            echo "ChangeSet Status returned as expected: ${ACTUAL_STATUS}"
+          else
+            echo "ChangeSet Status is not as expected."
+            echo "Expected: ${EXPECTED_STATUS}"
+            echo "Returned: ${ACTUAL_STATUS}"
+            exit 1
+          fi
+      - name: Apply Test ChangeSet of HelloWorld SAM Stack
         run: |
           docker run --rm \
             -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
@@ -473,6 +581,42 @@ jobs:
           docker build . --file Dockerfile --tag "${DOCKER_HUB_USERNAME}/${IMAGE_LAT}"
           cd ../../..
       - name: Test Deployment of HelloWorld SAM Stack
+        run: |
+          docker run --rm \
+            -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
+            -e OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE}" \
+            -e PIPELINE_USER_ACCESS_KEY_ID="${PIPELINE_USER_ACCESS_KEY_ID}" \
+            -e PIPELINE_USER_SECRET_ACCESS_KEY="${PIPELINE_USER_SECRET_ACCESS_KEY}" \
+            -e PIPELINE_EXECUTION_ROLE="${PIPELINE_EXECUTION_ROLE}" \
+            -e CF_STACK_NAME="${CF_STACK_NAME}" \
+            -e BITBUCKET_REPO_SLUG="${BITBUCKET_REPO_SLUG}" \
+            -e BITBUCKET_DEPLOYMENT_ENVIRONMENT="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+            -e ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET}" \
+            -e ARTIFACTS_BUCKET_PREFIX="${ARTIFACTS_BUCKET_PREFIX}" \
+            -e AWS_REGION="${AWS_REGION}" \
+            -e CF_EXECUTION_ROLE="${CF_EXECUTION_ROLE}" \
+            -e SAM_CONFIG_FILE="${SAM_CONFIG_FILE}" \
+            -e BITBUCKET_CLONE_DIR="${BITBUCKET_CLONE_DIR}" \
+            -e SKIP_CHANGESET_EXECUTION="true" \
+            -e CAPABILITIES="${CAPABILITIES}" \
+            -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
+            "${DOCKER_HUB_USERNAME}/${IMAGE_LAT}"
+      - name: Check if HelloWorld SAM ChangeSet got created correctly
+        run: |
+          echo "Discovering Hello World ChangeSet Status"
+          ACTUAL_STATUS=`aws cloudformation list-stacks --stack-status-filter REVIEW_IN_PROGRESS --output text --query 'StackSummaries[?StackName==\`aws-sam-custom-deploy\`].StackStatus|[0]'`          
+          echo "Checking Hello World Lambda Message"
+          EXPECTED_STATUS="REVIEW_IN_PROGRESS"
+          if [[ ${ACTUAL_STATUS} == ${EXPECTED_STATUS} ]]
+          then
+            echo "ChangeSet Status returned as expected: ${ACTUAL_STATUS}"
+          else
+            echo "ChangeSet Status is not as expected."
+            echo "Expected: ${EXPECTED_STATUS}"
+            echo "Returned: ${ACTUAL_STATUS}"
+            exit 1
+          fi
+      - name: Apply Test ChangeSet of HelloWorld SAM Stack
         run: |
           docker run --rm \
             -e SAM_TEMPLATE="${SAM_TEMPLATE}" \
