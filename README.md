@@ -34,6 +34,7 @@ Add the following snippet to the script section of your `bitbucket-pipelines.yml
     CAPABILITIES: '<CAPABILITY_IAM|CAPABILITY_NAMED_IAM|NOCAPABILITIES>'
     DEBUG: '<true|false>'
     DELETE: '<true|false>'
+    SKIP_CHANGESET_EXECUTION: '<true|false>'
 ```
 
 ## Variables
