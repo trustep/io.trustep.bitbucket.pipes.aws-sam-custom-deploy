@@ -72,6 +72,8 @@ export AWS_ACCESS_KEY_ID=$(echo "$cred" | awk '{ print $1 }')
 export AWS_SECRET_ACCESS_KEY=$(echo "$cred" | awk '{ print $2 }')
 export AWS_SESSION_TOKEN=$(echo "$cred" | awk '{ print $3 }')
 
+run sam --version
+
 if [[ "${DELETE}" != "true" ]]; then
     info "Running sam package command..."
     run sam package ${PARAM_DEBUG} --s3-bucket "${ARTIFACTS_BUCKET}" --s3-prefix "${ARTIFACTS_BUCKET_PREFIX}" --region "${AWS_REGION}" --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" --output-template-file ${OUTPUT_TEMPLATE_FILE}
