@@ -36,6 +36,8 @@ variables:
     default: "false"
   - name: DELETE
     default: "false"
+  - name: FAIL_ON_EMPTY_CHANGESET
+    default: "false"
 vendor:
   name: TruStep
   website: https://www.trustep.io
