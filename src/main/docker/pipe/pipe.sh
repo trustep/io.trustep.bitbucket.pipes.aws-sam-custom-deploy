@@ -54,6 +54,7 @@ if [[ "${FAIL_ON_EMPTY_CHANGESET}" == "true" ]]; then
 else
     info "Running with --no-fail-on-empty-changeset"
     export PARAM_FAIL_ON_EMPTY_CHANGESET="--no-fail-on-empty-changeset"
+fi
 
 export SKIP_CHANGESET_EXECUTION=${SKIP_CHANGESET_EXECUTION:="false"}
 if [[ "${SKIP_CHANGESET_EXECUTION}" == "true" ]]; then
