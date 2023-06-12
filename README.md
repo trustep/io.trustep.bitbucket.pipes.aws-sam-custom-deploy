@@ -34,7 +34,11 @@ Add the following snippet to the script section of your `bitbucket-pipelines.yml
     CAPABILITIES: '<CAPABILITY_IAM|CAPABILITY_NAMED_IAM|NOCAPABILITIES>'
     DEBUG: '<true|false>'
     DELETE: '<true|false>'
+<<<<<<< HEAD
+    FAIL_ON_EMPTY_CHANGESET: '<true|false>'
+=======
     SKIP_CHANGESET_EXECUTION: '<true|false>'
+>>>>>>> develop
 ```
 
 ## Variables
@@ -56,6 +60,7 @@ Add the following snippet to the script section of your `bitbucket-pipelines.yml
 | CAPABILITIES                     | No       | 'NOCAPABILITIES'                                                            | Which IAM capabilities must be enabled: CAPABILITY_IAM, CAPABILITY_NAMED_IAM or NOCAPABILITIES (the default) are the available values |
 | DEBUG                            | No       | 'false'                                                                     | Turn on extra debug information. | 
 | DELETE                           | No       | 'false'                                                                     | When enabled, runs the sam delete command instead of regular build/package/deploy commands. | 
+| FAIL_ON_EMPTY_CHANGESET          | No       | 'false'                                                                     | When enabled, adds to the sam command the option --fail-on-empty-changeset. Only applies to Deployment mode. | 
 | SKIP_CHANGESET_EXECUTION         | No       | 'false'                                                                     | When enabled, adds to the sam command the option --no-execute-changeset. Only applies to Deployment mode. | 
 
 The default values that references environment variables, exception made to those starting as "BITBUCKET_*", should be set either within bitbucket environment variables or directly withing the pipeline definition.
@@ -135,5 +140,5 @@ If you're reporting an issue, please include:
 * steps to reproduce
 
 ## License
-Copyright (c) 2022 Trustep.
+Copyright (c) 2022-2023 Trustep.
 Apache 2.0 licensed, see [LICENSE](LICENSE) file.
