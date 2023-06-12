@@ -10,6 +10,8 @@ variables:
     default: "${BITBUCKET_REPO_SLUG}"
   - name: BITBUCKET_DEPLOYMENT_ENVIRONMENT
     default: "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}"
+  - name: BITBUCKET_STEP_OIDC_TOKEN
+    default: "${BITBUCKET_STEP_OIDC_TOKEN}"
   - name: AWS_REGION
     default: "${AWS_REGION}"
   - name: PIPELINE_USER_ACCESS_KEY_ID
