@@ -74,7 +74,8 @@ then
     export WEB_IDENTITY_TOKEN_FILE="web-identity-token.txt"
     echo "${BITBUCKET_STEP_OIDC_TOKEN}" > ${WEB_IDENTITY_TOKEN_FILE}
     export AWS_WEB_IDENTITY_TOKEN_FILE=$(pwd)/${WEB_IDENTITY_TOKEN_FILE}
-    echo "Token file: ${AWS_WEB_IDENTITY_TOKEN_FILE}"
+    echo "Token file: ${AWS_WEB_IDENTITY_TOKEN_FILE}:"
+    cat ${WEB_IDENTITY_TOKEN_FILE}
     export AWS_ROLE_SESSION_NAME="pipeline-execution"
     export AWS_ROLE_ARN="${PIPELINE_EXECUTION_ROLE}"
     run aws sts get-caller-identity
