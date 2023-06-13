@@ -34,7 +34,8 @@ fi
 
 # HANDLE DEBUG PARAMETER
 export DEBUG=${DEBUG:="false"}
-if [[ "${DEBUG}" == "true" ]]; then
+if [[ "${DEBUG}" == "true" ]]
+then
     info "Running with debug enabled"
     export PARAM_DEBUG="--debug"
 else
@@ -85,14 +86,12 @@ else
 fi
 
 # Check for valid credentials
-aws sts get-caller-identity > aws-identity.json
+aws sts get-caller-identity > /dev/null
 if [[ $? -ne 0 ]]
 then
     fail "Invalid credentials given."
     exit -1
 fi
-echo "Running sam commands with the following identity:"
-cat aws-identity.json
 
 export DELETE=${DELETE:="false"}
 
