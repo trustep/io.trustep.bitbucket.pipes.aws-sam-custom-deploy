@@ -10,10 +10,6 @@ info "Enviroment variables setup..."
 export BITBUCKET_CLONE_DIR=${BITBUCKET_CLONE_DIR:?'BITBUCKET_CLONE_DIR variable missing.'}
 export BITBUCKET_DEPLOYMENT_ENVIRONMENT=${BITBUCKET_DEPLOYMENT_ENVIRONMENT:?'BITBUCKET_DEPLOYMENT_ENVIRONMENT variable is missing'}
 
-export AWS_ACCESS_KEY_ID=${PIPELINE_USER_ACCESS_KEY_ID:?'PIPELINE_USER_ACCESS_KEY_ID variable missing.'}
-export AWS_SECRET_ACCESS_KEY=${PIPELINE_USER_SECRET_ACCESS_KEY:?'PIPELINE_USER_SECRET_ACCESS_KEY variable missing.'}
-export AWS_REGION=${AWS_REGION:?'AWS_REGION variable is missing'}
-
 export SAM_TEMPLATE=${SAM_TEMPLATE:?'SAM_TEMPLATE variable missing.'}
 export PIPELINE_EXECUTION_ROLE=${PIPELINE_EXECUTION_ROLE:?'PIPELINE_EXECUTION_ROLE variable missing.'}
 export CF_STACK_NAME=${CF_STACK_NAME:?'CF_STACK_NAME variable is missing'}
@@ -38,7 +34,8 @@ fi
 
 # HANDLE DEBUG PARAMETER
 export DEBUG=${DEBUG:="false"}
-if [[ "${DEBUG}" == "true" ]]; then
+if [[ "${DEBUG}" == "true" ]]
+then
     info "Running with debug enabled"
     export PARAM_DEBUG="--debug"
 else
@@ -56,6 +53,7 @@ else
     export PARAM_FAIL_ON_EMPTY_CHANGESET="--no-fail-on-empty-changeset"
 fi
 
+# HANDLE SKIP_CHANGESET_EXECUTION PARAMETER
 export SKIP_CHANGESET_EXECUTION=${SKIP_CHANGESET_EXECUTION:="false"}
 if [[ "${SKIP_CHANGESET_EXECUTION}" == "true" ]]; then
     export NO_EXECUTE_CHANGESET="--no-execute-changeset"
@@ -63,7 +61,41 @@ else
     export NO_EXECUTE_CHANGESET=""
 fi
 
+# HANDLE AWS CREDENTIALS
+export BITBUCKET_STEP_OIDC_TOKEN=${BITBUCKET_STEP_OIDC_TOKEN:='false'}
+if [[ "${BITBUCKET_STEP_OIDC_TOKEN}" != "false" ]]
+then
+    info "Using OIDC authentication for aws ..."
+    # unset env variables to prevent aws client general auth
+    unset AWS_ACCESS_KEY_ID
+    unset AWS_SECRET_ACCESS_KEY
+    unset AWS_SESSION_TOKEN
+    # setup token file
+    export WEB_IDENTITY_TOKEN_FILE="web-identity-token.txt"
+    echo "${BITBUCKET_STEP_OIDC_TOKEN}" > ${WEB_IDENTITY_TOKEN_FILE}
+    # setup environment variables
+    export AWS_WEB_IDENTITY_TOKEN_FILE=$(pwd)/${WEB_IDENTITY_TOKEN_FILE}
+    export AWS_ROLE_SESSION_NAME=${ROLE_SESSION_NAME:="BitbucketPipeline"}
+    export AWS_ROLE_ARN="${PIPELINE_EXECUTION_ROLE}"
+else
+    info "Using IAM authentication for aws ..."
+    export AWS_ACCESS_KEY_ID=${PIPELINE_USER_ACCESS_KEY_ID:?'PIPELINE_USER_ACCESS_KEY_ID variable missing.'}
+    export AWS_SECRET_ACCESS_KEY=${PIPELINE_USER_SECRET_ACCESS_KEY:?'PIPELINE_USER_SECRET_ACCESS_KEY variable missing.'}
+    export AWS_REGION=${AWS_REGION:?'AWS_REGION variable is missing'}
+    aws sts get-caller-identity > aws-identity.json
+fi
+
+# Check for valid credentials
+aws sts get-caller-identity > /dev/null
+if [[ $? -ne 0 ]]
+then
+    fail "Invalid credentials given."
+    exit -1
+fi
+
 export DELETE=${DELETE:="false"}
+
+run sam --version
 
 info "BITBUCKET_CLONE_DIR = ${BITBUCKET_CLONE_DIR}"
 cd $BITBUCKET_CLONE_DIR
@@ -73,13 +105,15 @@ if [[ "${DELETE}" != "true" ]]; then
     run sam build ${PARAM_DEBUG} --template $SAM_TEMPLATE --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}"
 fi
 
-info "Assuming pipeline execution role..."
-cred=$(aws sts assume-role --role-arn "$PIPELINE_EXECUTION_ROLE" --role-session-name "testing-stage-packaging" --query '[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]' --output text)
-export AWS_ACCESS_KEY_ID=$(echo "$cred" | awk '{ print $1 }')
-export AWS_SECRET_ACCESS_KEY=$(echo "$cred" | awk '{ print $2 }')
-export AWS_SESSION_TOKEN=$(echo "$cred" | awk '{ print $3 }')
-
-run sam --version
+if [[ "${BITBUCKET_STEP_OIDC_TOKEN}" == "false" ]]
+then
+    # Only needed when using IAM auth
+    info "Assuming pipeline execution role..."
+    cred=$(aws sts assume-role --role-arn "$PIPELINE_EXECUTION_ROLE" --role-session-name "testing-stage-packaging" --query '[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]' --output text)
+    export AWS_ACCESS_KEY_ID=$(echo "$cred" | awk '{ print $1 }')
+    export AWS_SECRET_ACCESS_KEY=$(echo "$cred" | awk '{ print $2 }')
+    export AWS_SESSION_TOKEN=$(echo "$cred" | awk '{ print $3 }')
+fi
 
 if [[ "${DELETE}" != "true" ]]; then
     info "Running sam package command..."
