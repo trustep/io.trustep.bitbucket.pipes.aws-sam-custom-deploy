@@ -39,7 +39,7 @@ jobs:
       - id: setupVars
         name: Setup Environment Variables
         env:
-          NEXT_RELEASE_BASE_VERSION: 1.1.0
+          NEXT_RELEASE_BASE_VERSION: 1.2.0
           FEATURE_BRANCH_NAME: ${{github.event.ref}}
           SAM_CONFIG_FILE: samconfig.toml
           SAM_TEMPLATE: template.yaml
@@ -108,7 +108,7 @@ jobs:
       LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Login to Docker Hub
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
@@ -291,7 +291,7 @@ jobs:
       LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Login to Docker Hub
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
@@ -431,7 +431,7 @@ jobs:
       LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Login to Docker Hub
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
@@ -571,7 +571,7 @@ jobs:
       LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Login to Docker Hub
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
