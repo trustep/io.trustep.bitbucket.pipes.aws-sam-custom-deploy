@@ -158,5 +158,5 @@ If you're reporting an issue, please include:
 
 ## License
 
-Copyright (c) 2022-2023 Trustep.
+Copyright (c) 2022-2024 Trustep.
 Apache 2.0 licensed, see [LICENSE](LICENSE) file.
