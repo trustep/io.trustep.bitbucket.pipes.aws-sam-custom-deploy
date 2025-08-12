@@ -1,23 +1,16 @@
 FROM public.ecr.aws/sam/build-provided.al2023:1
 
-# Substituir yum por dnf para AL2023
-RUN ["/bin/bash", "-c", "dnf install wget -y && wget --no-verbose --output-document=/common.sh https://bitbucket.org/bitbucketpipelines/bitbucket-pipes-toolkit-bash/raw/0.6.0/common.sh && chmod ugo+x /common.sh"]
+# Install dependencies and setup NVM in single layer (curl already available)
+RUN curl --proto "=https" --location --output /common.sh https://bitbucket.org/bitbucketpipelines/bitbucket-pipes-toolkit-bash/raw/0.6.0/common.sh && \
+    chmod ugo+x /common.sh && \
+    curl --proto "=https" --location https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
+    source ~/.nvm/nvm.sh && \
+    nvm install 22
 
-# Atualizar NVM para versão mais recente compatível com AL2023
-RUN ["/bin/bash", "-c", "wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && source ~/.nvm/nvm.sh && nvm install 22"]
+# Copy all application files in single operation
+COPY ./pipe/pipe.sh ./LICENSE ./pipe.yml /
 
-
-# RUN 
-# RUN echo "export NVM_DIR=\"\$([ -z \"\${XDG_CONFIG_HOME-}\" ] && printf %s \"\${HOME}/.nvm\" || printf %s \"\${XDG_CONFIG_HOME}/nvm\")\"" >> ~/.bashrc
-# RUN echo "[ -s \"\$NVM_DIR/nvm.sh\" ] && \. \"\$NVM_DIR/nvm.sh\"" >> ~/.bashrc
-# RUN . ~/.nvm/nvm.sh && nvm install 16
-
-
-
-COPY ./pipe/pipe.sh /pipe.sh
-COPY ./LICENSE /LICENSE
-COPY ./pipe.yml /pipe.yml
-
+# Set permissions
 RUN chmod a+x /*.sh
 
 ENTRYPOINT ["/pipe.sh"]
