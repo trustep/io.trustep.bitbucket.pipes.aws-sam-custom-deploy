@@ -1,7 +1,10 @@
 FROM public.ecr.aws/sam/build-provided.al2023:1
 
-RUN ["/bin/bash", "-c", "yum install wget -y && wget --no-verbose --output-document=/common.sh https://bitbucket.org/bitbucketpipelines/bitbucket-pipes-toolkit-bash/raw/0.6.0/common.sh && chmod ugo+x /common.sh"]
-RUN ["/bin/bash", "-c", "wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | bash && source ~/.nvm/nvm.sh && nvm install 16"]
+# Substituir yum por dnf para AL2023
+RUN ["/bin/bash", "-c", "dnf install wget -y && wget --no-verbose --output-document=/common.sh https://bitbucket.org/bitbucketpipelines/bitbucket-pipes-toolkit-bash/raw/0.6.0/common.sh && chmod ugo+x /common.sh"]
+
+# Atualizar NVM para versão mais recente compatível com AL2023
+RUN ["/bin/bash", "-c", "wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && source ~/.nvm/nvm.sh && nvm install 22"]
 
 
 # RUN 
