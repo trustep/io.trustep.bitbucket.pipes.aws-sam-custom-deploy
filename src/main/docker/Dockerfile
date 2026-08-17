@@ -1,4 +1,5 @@
-FROM public.ecr.aws/sam/build-provided.al2023:1
+ARG SAM_CLI_VERSION=1.165.0
+FROM public.ecr.aws/sam/build-provided.al2023:${SAM_CLI_VERSION}
 
 # Install dependencies and setup NVM in single layer (curl already available)
 RUN curl --proto "=https" --location --output /common.sh https://bitbucket.org/bitbucketpipelines/bitbucket-pipes-toolkit-bash/raw/0.6.0/common.sh && \

@@ -39,7 +39,8 @@ jobs:
       - id: setupVars
         name: Setup Environment Variables
         env:
-          NEXT_RELEASE_BASE_VERSION: 1.3.0
+          # Versión objetivo del AWS SAM CLI; la tag del pipe se alinea a este valor.
+          SAM_TARGET_VERSION: 1.165.0
           FEATURE_BRANCH_NAME: ${{github.event.ref}}
           SAM_CONFIG_FILE: samconfig.toml
           SAM_TEMPLATE: template.yaml
@@ -51,6 +52,7 @@ jobs:
           BITBUCKET_REPO_SLUG: aws-sam-custom-deploy
           BITBUCKET_CLONE_DIR: /project
         run: |
+          NEXT_RELEASE_BASE_VERSION="${SAM_TARGET_VERSION}"
           FEATURE_STACK_NAME=$(echo ${FEATURE_BRANCH_NAME##*/} | tr -cd '[a-zA-Z0-9-]')
           IMAGE_FET="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}-feat-${FEATURE_STACK_NAME}"
           IMAGE_DEV="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}-$(date "+%Y%m%d-%H%M%S")"
@@ -115,7 +117,9 @@ jobs:
       - name: Build the Docker Image
         run: |
           cd src/main/docker
-          docker build . --file Dockerfile --tag "${DOCKER_HUB_USERNAME}/${IMAGE_FET}"
+          docker build . --file Dockerfile \
+            --build-arg SAM_CLI_VERSION="${NEXT_RELEASE_BASE_VERSION}" \
+            --tag "${DOCKER_HUB_USERNAME}/${IMAGE_FET}"
           cd ../../..
       - name: Create Test HelloWorld SAM Stack ChangeSet
         run: |
@@ -298,7 +302,9 @@ jobs:
       - name: Build the Docker Image
         run: |
           cd src/main/docker
-          docker build . --file Dockerfile --tag "${DOCKER_HUB_USERNAME}/${IMAGE_DEV}"
+          docker build . --file Dockerfile \
+            --build-arg SAM_CLI_VERSION="${NEXT_RELEASE_BASE_VERSION}" \
+            --tag "${DOCKER_HUB_USERNAME}/${IMAGE_DEV}"
           cd ../../..
       - name: Create Test HelloWorld SAM Stack ChangeSet
         run: |
@@ -438,7 +444,9 @@ jobs:
       - name: Build the Docker Image
         run: |
           cd src/main/docker
-          docker build . --file Dockerfile --tag "${DOCKER_HUB_USERNAME}/${IMAGE_REL}"
+          docker build . --file Dockerfile \
+            --build-arg SAM_CLI_VERSION="${NEXT_RELEASE_BASE_VERSION}" \
+            --tag "${DOCKER_HUB_USERNAME}/${IMAGE_REL}"
           cd ../../..
       - name: Create Test HelloWorld SAM Stack ChangeSet
         run: |
@@ -578,7 +586,9 @@ jobs:
       - name: Build the Docker Image
         run: |
           cd src/main/docker
-          docker build . --file Dockerfile --tag "${DOCKER_HUB_USERNAME}/${IMAGE_LAT}"
+          docker build . --file Dockerfile \
+            --build-arg SAM_CLI_VERSION="${NEXT_RELEASE_BASE_VERSION}" \
+            --tag "${DOCKER_HUB_USERNAME}/${IMAGE_LAT}"
           cd ../../..
       - name: Test Deployment of HelloWorld SAM Stack
         run: |

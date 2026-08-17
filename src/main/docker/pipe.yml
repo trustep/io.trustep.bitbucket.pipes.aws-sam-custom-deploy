@@ -1,5 +1,5 @@
 name: AWS SAM Custom Deploy
-image: trustep/aws-sam-custom-deploy:1.0.0
+image: trustep/aws-sam-custom-deploy:1.165.0
 description: This pipe deploys a custom AWS SAM Application.
 category: Deployment
 repository: https://github.com/trustep/io.trustep.bitbucket.pipes.aws-sam-custom-deploy.git
