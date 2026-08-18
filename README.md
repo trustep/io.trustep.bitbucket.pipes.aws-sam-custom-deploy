@@ -11,6 +11,7 @@ Published images and tags:
 * [Scope](#scope)
 * [Compared to the official AWS SAM pipe](#compared-to-the-official-aws-sam-pipe)
 * [Versioning (consumers)](#versioning-consumers)
+* [Image variants](#image-variants)
 * [Prerequisites](#prerequisites)
 * [Quick start](#quick-start)
 * [samconfig contract](#samconfig-contract)
@@ -32,6 +33,7 @@ Published images and tags:
 * Pass selected SAM CLI flags controlled by pipe variables (`CAPABILITIES`, empty-changeset behavior,
   skip changeset execution, debug).
 * Authenticate with IAM access keys or Bitbucket OIDC (OIDC takes precedence when both are present).
+* Publish multiple image variants (custom + selected Node/Python SAM build bases) from one catalog.
 
 **This pipe does not:**
 
@@ -41,10 +43,9 @@ Published images and tags:
 * Pass `sam build --use-container` or provide a Docker daemon for containerized builds.
 * Provide a general-purpose AWS CLI wrapper.
 
-The base image is the SAM **provided.al2023** build image, with **Node.js 22** installed via NVM on top.
-Your application must be buildable in that environment (native SAM build tools plus Node 22 when needed).
-Apps that require `sam build --use-container` or other language toolchains not present in the image are
-out of scope for this pipe as shipped.
+Pick the image tag that matches your Lambda runtime toolchain (see [Image variants](#image-variants)).
+Apps that require `sam build --use-container` or toolchains not present in the chosen variant are out
+of scope for this pipe as shipped.
 
 ## Compared to the official AWS SAM pipe
 
@@ -61,36 +62,60 @@ that pipe may be enough. This project exists for the customization gaps above.
 
 ## Versioning (consumers)
 
-Pipe image tags mirror the AWS SAM CLI version embedded in
-`public.ecr.aws/sam/build-provided.al2023`.
+Pipe image tags mirror the AWS SAM CLI version embedded in the chosen SAM build base image.
 
-* Current target SAM CLI version: **1.165.0** → `trustep/aws-sam-custom-deploy:1.165.0`
-* Prefer a pinned `x.y.z` tag when you need a reproducible SAM CLI contract.
-* `latest` is a floating tag published from `main` and is not a version contract.
+* Current target SAM CLI version: **1.165.0**
+* Prefer a pinned `x.y.z` (optionally with a runtime suffix) when you need a reproducible SAM CLI contract.
+* `latest` / `latest-<runtime>` are floating tags published from `main`.
 * Browse published tags on
   [Docker Hub](https://hub.docker.com/r/trustep/aws-sam-custom-deploy/tags).
 
 | Tag | Behavior |
 | :-- | :------- |
-| `trustep/aws-sam-custom-deploy:latest` | Floating pointer from `main`. Tracks the newest released pipe and its paired SAM CLI. Builds may change without edits to your pipeline YAML. |
-| `trustep/aws-sam-custom-deploy:x.y.z` | Immutable release. Pins both the pipe and the embedded AWS SAM CLI to the same semantic version. |
+| `trustep/aws-sam-custom-deploy:latest` | Floating default (custom) image from `main`. |
+| `trustep/aws-sam-custom-deploy:x.y.z` | Immutable default (custom) release. |
+| `trustep/aws-sam-custom-deploy:latest-<runtime>` | Floating runtime-specific image from `main`. |
+| `trustep/aws-sam-custom-deploy:x.y.z-<runtime>` | Immutable runtime-specific release. |
 
-**Recommendation:** prefer `:latest` when you want to stay aligned with the newest SAM CLI and pipe
-improvements with minimal maintenance.
+**Recommendation:** prefer `:latest` (or `:latest-<runtime>`) when you want to stay aligned with the
+newest SAM CLI and pipe improvements with minimal maintenance.
 
 The right choice still depends on each project. Prefer a specific `x.y.z` tag when you need reproducible
 pipelines, stricter change control, or deliberate SAM CLI upgrades (for example regulated environments,
 long-lived release trains, or teams that validate tooling upgrades before production).
 
+## Image variants
+
+The catalog is static in [`src/main/docker/variants.json`](src/main/docker/variants.json). Each entry is
+built and published on release/`main`.
+
+| Suffix | Base image | Notes |
+| :----- | :--------- | :---- |
+| *(none)* | `public.ecr.aws/sam/build-provided.al2023` | **Default / compatibility.** Adds NVM + Node.js 22. Tags: `latest`, `1.165.0`. |
+| `-nodejs24.x` | `public.ecr.aws/sam/build-nodejs24.x` | Official Node 24 build image. Tags: `latest-nodejs24.x`, `1.165.0-nodejs24.x`. |
+| `-nodejs22.x` | `public.ecr.aws/sam/build-nodejs22.x` | Official Node 22 build image. Tags: `latest-nodejs22.x`, `1.165.0-nodejs22.x`. |
+| `-python3.14` | `public.ecr.aws/sam/build-python3.14` | Official Python 3.14 build image. |
+| `-python3.13` | `public.ecr.aws/sam/build-python3.13` | Official Python 3.13 build image. |
+| `-python3.12` | `public.ecr.aws/sam/build-python3.12` | Official Python 3.12 build image. |
+
+Example:
+
+```yaml
+- pipe: trustep/aws-sam-custom-deploy:latest-python3.13
+```
+
+To add or remove a supported runtime, edit `variants.json` (no dynamic discovery).
+
 ### Maintainer notes
 
-To advance the target version in this repository: update `SAM_TARGET_VERSION` in
+To advance the target SAM version: update `SAM_TARGET_VERSION` in
 `.github/workflows/pipeline.yaml`, the `SAM_CLI_VERSION` default in `src/main/docker/Dockerfile`,
 `image` in `src/main/docker/pipe.yml`, and this README; then publish via a `release*` branch.
+All variants in `variants.json` are rebuilt against that SAM version.
 
 `src/main/docker/pipe.yml` pins a concrete image tag for the pipe metadata packaged inside the image
-(currently the target `x.y.z`). That is separate from what consumers put in
-`bitbucket-pipelines.yml`: consumers choose `latest` or `x.y.z` in the `pipe:` line themselves.
+(currently the target `x.y.z` without runtime suffix). Consumers choose `latest`, `x.y.z`, or a
+suffixed tag in the `pipe:` line themselves.
 
 ## Prerequisites
 

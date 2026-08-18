@@ -31,6 +31,7 @@ jobs:
       IMAGE_DEV: ${{steps.setupVars.outputs.IMAGE_DEV}}
       IMAGE_REL: ${{steps.setupVars.outputs.IMAGE_REL}}
       IMAGE_LAT: ${{steps.setupVars.outputs.IMAGE_LAT}}
+      DEV_TIMESTAMP: ${{ steps.setupVars.outputs.DEV_TIMESTAMP }}
       BITBUCKET_REPO_SLUG: ${{ steps.setupVars.outputs.BITBUCKET_REPO_SLUG }}
       ARTIFACTS_BUCKET_PREFIX: ${{ steps.setupVars.outputs.ARTIFACTS_BUCKET_PREFIX }}
       BITBUCKET_CLONE_DIR: ${{ steps.setupVars.outputs.BITBUCKET_CLONE_DIR }}
@@ -54,8 +55,9 @@ jobs:
         run: |
           NEXT_RELEASE_BASE_VERSION="${SAM_TARGET_VERSION}"
           FEATURE_STACK_NAME=$(echo ${FEATURE_BRANCH_NAME##*/} | tr -cd '[a-zA-Z0-9-]')
+          DEV_TIMESTAMP=$(date "+%Y%m%d-%H%M%S")
           IMAGE_FET="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}-feat-${FEATURE_STACK_NAME}"
-          IMAGE_DEV="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}-$(date "+%Y%m%d-%H%M%S")"
+          IMAGE_DEV="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}-${DEV_TIMESTAMP}"
           IMAGE_REL="${BITBUCKET_REPO_SLUG}:${NEXT_RELEASE_BASE_VERSION}"
           IMAGE_LAT="${BITBUCKET_REPO_SLUG}:latest"
           ARTIFACTS_BUCKET_PREFIX="${BITBUCKET_DEPLOYMENT_ENVIRONMENT}/${BITBUCKET_REPO_SLUG}/${CF_STACK_NAME}"
@@ -73,6 +75,7 @@ jobs:
           echo "IMAGE_DEV=${IMAGE_DEV}" >> $GITHUB_OUTPUT
           echo "IMAGE_REL=${IMAGE_REL}" >> $GITHUB_OUTPUT
           echo "IMAGE_LAT=${IMAGE_LAT}" >> $GITHUB_OUTPUT
+          echo "DEV_TIMESTAMP=${DEV_TIMESTAMP}" >> $GITHUB_OUTPUT
           echo "BITBUCKET_REPO_SLUG=${BITBUCKET_REPO_SLUG}" >> $GITHUB_OUTPUT
           echo "ARTIFACTS_BUCKET_PREFIX=${ARTIFACTS_BUCKET_PREFIX}" >> $GITHUB_OUTPUT
           echo "BITBUCKET_CLONE_DIR=${BITBUCKET_CLONE_DIR}" >> $GITHUB_OUTPUT
@@ -104,6 +107,7 @@ jobs:
       IMAGE_DEV: ${{needs.prepare.outputs.IMAGE_DEV}}
       IMAGE_REL: ${{needs.prepare.outputs.IMAGE_REL}}
       IMAGE_LAT: ${{needs.prepare.outputs.IMAGE_LAT}}
+      DEV_TIMESTAMP: ${{ needs.prepare.outputs.DEV_TIMESTAMP }}
       BITBUCKET_REPO_SLUG: ${{ needs.prepare.outputs.BITBUCKET_REPO_SLUG }}
       ARTIFACTS_BUCKET_PREFIX: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET_PREFIX }}
       BITBUCKET_CLONE_DIR: ${{ needs.prepare.outputs.BITBUCKET_CLONE_DIR }}
@@ -114,13 +118,10 @@ jobs:
       - name: Login to Docker Hub
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
-      - name: Build the Docker Image
+      - name: Build the Docker Images
         run: |
-          cd src/main/docker
-          docker build . --file Dockerfile \
-            --build-arg SAM_CLI_VERSION="${NEXT_RELEASE_BASE_VERSION}" \
-            --tag "${DOCKER_HUB_USERNAME}/${IMAGE_FET}"
-          cd ../../..
+          chmod +x src/main/docker/build-variants.sh
+          src/main/docker/build-variants.sh feature
       - name: Create Test HelloWorld SAM Stack ChangeSet
         run: |
           docker run --rm \
@@ -216,9 +217,9 @@ jobs:
             -e DELETE="true" \
             -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
             "${DOCKER_HUB_USERNAME}/${IMAGE_FET}"
-      - name: Push image to Docker Hub
+      - name: Push images to Docker Hub
         run: |
-          docker push "${DOCKER_HUB_USERNAME}/${IMAGE_FET}"
+          src/main/docker/build-variants.sh feature --push-only
 
   undeploy-feature:
     if: startsWith(github.event.ref, 'feature') && github.event_name == 'delete'
@@ -246,6 +247,7 @@ jobs:
       IMAGE_DEV: ${{needs.prepare.outputs.IMAGE_DEV}}
       IMAGE_REL: ${{needs.prepare.outputs.IMAGE_REL}}
       IMAGE_LAT: ${{needs.prepare.outputs.IMAGE_LAT}}
+      DEV_TIMESTAMP: ${{ needs.prepare.outputs.DEV_TIMESTAMP }}
       BITBUCKET_REPO_SLUG: ${{ needs.prepare.outputs.BITBUCKET_REPO_SLUG }}
       ARTIFACTS_BUCKET_PREFIX: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET_PREFIX }}
       BITBUCKET_CLONE_DIR: ${{ needs.prepare.outputs.BITBUCKET_CLONE_DIR }}
@@ -254,14 +256,10 @@ jobs:
       - name: Login to Docker Hub
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
-      - name: Delete image from Docker Hub
+      - name: Delete images from Docker Hub
         run: |
-          echo "Generating Docker Hub Credentials"
-          DOCKER_HUB_TOKEN=$(curl --silent -X POST -H "Content-Type: application/json" -d "{\"username\": \"trustep\", \"password\": \"${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}\"}" https://hub.docker.com/v2/users/login)
-          DOCKER_HUB_BEARER=$(echo ${DOCKER_HUB_TOKEN}|jq -r ".token")
-          DOCKER_IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${DOCKER_HUB_USERNAME}/${IMAGE_FET}" |awk -F"@" '{print $2}')
-          echo "Deleting docker image from Docker Hub"
-          curl --location --silent -X POST 'https://hub.docker.com/v2/namespaces/trustep/delete-images' --header "Authorization: Bearer ${DOCKER_HUB_BEARER}" --header 'Content-Type: application/json' -d "{\"dry_run\": false, \"manifests\": [{\"repository\": \"aws-sam-custom-deploy\", \"digest\": \"${DOCKER_IMAGE_DIGEST}\" }]}"
+          chmod +x src/main/docker/delete-feature-variants.sh
+          src/main/docker/delete-feature-variants.sh
 
   deploy-develop:
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
@@ -289,6 +287,7 @@ jobs:
       IMAGE_DEV: ${{needs.prepare.outputs.IMAGE_DEV}}
       IMAGE_REL: ${{needs.prepare.outputs.IMAGE_REL}}
       IMAGE_LAT: ${{needs.prepare.outputs.IMAGE_LAT}}
+      DEV_TIMESTAMP: ${{ needs.prepare.outputs.DEV_TIMESTAMP }}
       BITBUCKET_REPO_SLUG: ${{ needs.prepare.outputs.BITBUCKET_REPO_SLUG }}
       ARTIFACTS_BUCKET_PREFIX: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET_PREFIX }}
       BITBUCKET_CLONE_DIR: ${{ needs.prepare.outputs.BITBUCKET_CLONE_DIR }}
@@ -299,13 +298,10 @@ jobs:
       - name: Login to Docker Hub
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
-      - name: Build the Docker Image
+      - name: Build the Docker Images
         run: |
-          cd src/main/docker
-          docker build . --file Dockerfile \
-            --build-arg SAM_CLI_VERSION="${NEXT_RELEASE_BASE_VERSION}" \
-            --tag "${DOCKER_HUB_USERNAME}/${IMAGE_DEV}"
-          cd ../../..
+          chmod +x src/main/docker/build-variants.sh
+          src/main/docker/build-variants.sh develop
       - name: Create Test HelloWorld SAM Stack ChangeSet
         run: |
           docker run --rm \
@@ -401,9 +397,9 @@ jobs:
             -e DELETE="true" \
             -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
             "${DOCKER_HUB_USERNAME}/${IMAGE_DEV}"
-      - name: Push image to Docker Hub
+      - name: Push images to Docker Hub
         run: |
-          docker push "${DOCKER_HUB_USERNAME}/${IMAGE_DEV}"
+          src/main/docker/build-variants.sh develop --push-only
 
   deploy-release:
     if: startsWith(github.ref, 'refs/heads/release') && github.event_name == 'push'
@@ -431,6 +427,7 @@ jobs:
       IMAGE_DEV: ${{needs.prepare.outputs.IMAGE_DEV}}
       IMAGE_REL: ${{needs.prepare.outputs.IMAGE_REL}}
       IMAGE_LAT: ${{needs.prepare.outputs.IMAGE_LAT}}
+      DEV_TIMESTAMP: ${{ needs.prepare.outputs.DEV_TIMESTAMP }}
       BITBUCKET_REPO_SLUG: ${{ needs.prepare.outputs.BITBUCKET_REPO_SLUG }}
       ARTIFACTS_BUCKET_PREFIX: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET_PREFIX }}
       BITBUCKET_CLONE_DIR: ${{ needs.prepare.outputs.BITBUCKET_CLONE_DIR }}
@@ -441,13 +438,10 @@ jobs:
       - name: Login to Docker Hub
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
-      - name: Build the Docker Image
+      - name: Build the Docker Images
         run: |
-          cd src/main/docker
-          docker build . --file Dockerfile \
-            --build-arg SAM_CLI_VERSION="${NEXT_RELEASE_BASE_VERSION}" \
-            --tag "${DOCKER_HUB_USERNAME}/${IMAGE_REL}"
-          cd ../../..
+          chmod +x src/main/docker/build-variants.sh
+          src/main/docker/build-variants.sh release
       - name: Create Test HelloWorld SAM Stack ChangeSet
         run: |
           docker run --rm \
@@ -543,9 +537,9 @@ jobs:
             -e DELETE="true" \
             -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
             "${DOCKER_HUB_USERNAME}/${IMAGE_REL}"
-      - name: Push image to Docker Hub
+      - name: Push images to Docker Hub
         run: |
-          docker push "${DOCKER_HUB_USERNAME}/${IMAGE_REL}"
+          src/main/docker/build-variants.sh release --push-only
 
   deploy-main:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -573,6 +567,7 @@ jobs:
       IMAGE_DEV: ${{needs.prepare.outputs.IMAGE_DEV}}
       IMAGE_REL: ${{needs.prepare.outputs.IMAGE_REL}}
       IMAGE_LAT: ${{needs.prepare.outputs.IMAGE_LAT}}
+      DEV_TIMESTAMP: ${{ needs.prepare.outputs.DEV_TIMESTAMP }}
       BITBUCKET_REPO_SLUG: ${{ needs.prepare.outputs.BITBUCKET_REPO_SLUG }}
       ARTIFACTS_BUCKET_PREFIX: ${{ needs.prepare.outputs.ARTIFACTS_BUCKET_PREFIX }}
       BITBUCKET_CLONE_DIR: ${{ needs.prepare.outputs.BITBUCKET_CLONE_DIR }}
@@ -583,13 +578,10 @@ jobs:
       - name: Login to Docker Hub
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
-      - name: Build the Docker Image
+      - name: Build the Docker Images
         run: |
-          cd src/main/docker
-          docker build . --file Dockerfile \
-            --build-arg SAM_CLI_VERSION="${NEXT_RELEASE_BASE_VERSION}" \
-            --tag "${DOCKER_HUB_USERNAME}/${IMAGE_LAT}"
-          cd ../../..
+          chmod +x src/main/docker/build-variants.sh
+          src/main/docker/build-variants.sh main
       - name: Test Deployment of HelloWorld SAM Stack
         run: |
           docker run --rm \
@@ -685,6 +677,6 @@ jobs:
             -e DELETE="true" \
             -v ${LOCAL_PATH}:${BITBUCKET_CLONE_DIR} \
             "${DOCKER_HUB_USERNAME}/${IMAGE_LAT}"
-      - name: Push image to Docker Hub
+      - name: Push images to Docker Hub
         run: |
-          docker push "${DOCKER_HUB_USERNAME}/${IMAGE_LAT}"
+          src/main/docker/build-variants.sh main --push-only

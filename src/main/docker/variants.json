@@ -1,0 +1,46 @@
+{
+  "variants": [
+    {
+      "id": "custom",
+      "suffix": "",
+      "base_image": "build-provided.al2023",
+      "install_nvm": true,
+      "default": true
+    },
+    {
+      "id": "nodejs24.x",
+      "suffix": "-nodejs24.x",
+      "base_image": "build-nodejs24.x",
+      "install_nvm": false,
+      "default": false
+    },
+    {
+      "id": "nodejs22.x",
+      "suffix": "-nodejs22.x",
+      "base_image": "build-nodejs22.x",
+      "install_nvm": false,
+      "default": false
+    },
+    {
+      "id": "python3.14",
+      "suffix": "-python3.14",
+      "base_image": "build-python3.14",
+      "install_nvm": false,
+      "default": false
+    },
+    {
+      "id": "python3.13",
+      "suffix": "-python3.13",
+      "base_image": "build-python3.13",
+      "install_nvm": false,
+      "default": false
+    },
+    {
+      "id": "python3.12",
+      "suffix": "-python3.12",
+      "base_image": "build-python3.12",
+      "install_nvm": false,
+      "default": false
+    }
+  ]
+}
