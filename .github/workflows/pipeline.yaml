@@ -37,6 +37,8 @@ jobs:
       BITBUCKET_CLONE_DIR: ${{ steps.setupVars.outputs.BITBUCKET_CLONE_DIR }}
       LOCAL_PATH: ${{ steps.setupVars.outputs.LOCAL_PATH }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
       - id: setupVars
         name: Setup Environment Variables
         env:
@@ -80,6 +82,41 @@ jobs:
           echo "ARTIFACTS_BUCKET_PREFIX=${ARTIFACTS_BUCKET_PREFIX}" >> $GITHUB_OUTPUT
           echo "BITBUCKET_CLONE_DIR=${BITBUCKET_CLONE_DIR}" >> $GITHUB_OUTPUT
           echo "LOCAL_PATH=${LOCAL_PATH}" >> $GITHUB_OUTPUT
+      - name: Require release notes for target SAM version
+        run: |
+          NOTES_FILE="release-notes-${{ steps.setupVars.outputs.NEXT_RELEASE_BASE_VERSION }}.md"
+          REF="${{ github.ref }}"
+          REQUIRE_FAIL=false
+          if [[ "${REF}" == "refs/heads/main" ]] || [[ "${REF}" == refs/heads/release* ]]; then
+            REQUIRE_FAIL=true
+          fi
+
+          if [[ -f "${NOTES_FILE}" ]]; then
+            echo "Found ${NOTES_FILE}"
+            exit 0
+          fi
+
+          MSG="Missing ${NOTES_FILE}. Create it at the repository root for SAM target version ${{ steps.setupVars.outputs.NEXT_RELEASE_BASE_VERSION }}."
+          if [[ "${REQUIRE_FAIL}" == "true" ]]; then
+            echo "::error::${MSG}"
+            exit 1
+          fi
+          echo "::warning::${MSG} (non-blocking on this branch; release/* and main will fail without it.)"
+
+  sonarcloud:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   
   deploy-feature:
     if: startsWith(github.ref, 'refs/heads/feature') && github.event_name == 'push'
@@ -114,7 +151,7 @@ jobs:
       LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Login to Docker Hub
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
@@ -294,7 +331,7 @@ jobs:
       LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Login to Docker Hub
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
@@ -405,6 +442,8 @@ jobs:
     if: startsWith(github.ref, 'refs/heads/release') && github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: [prepare]
+    permissions:
+      contents: write
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
@@ -434,7 +473,7 @@ jobs:
       LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Login to Docker Hub
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
@@ -540,6 +579,31 @@ jobs:
       - name: Push images to Docker Hub
         run: |
           src/main/docker/build-variants.sh release --push-only
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PERSONAL_ACCESS_TOKEN }}
+          repository: trustep/aws-sam-custom-deploy
+          short-description: Bitbucket Pipe for customized AWS SAM build/package/deploy/delete with runtime image variants.
+          readme-filepath: ./README.md
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NOTES_FILE="release-notes-${NEXT_RELEASE_BASE_VERSION}.md"
+          TAG="v${NEXT_RELEASE_BASE_VERSION}"
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release edit "${TAG}" \
+              --title "${TAG}" \
+              --notes-file "${NOTES_FILE}" \
+              --target "${{ github.sha }}"
+          else
+            gh release create "${TAG}" \
+              --title "${TAG}" \
+              --notes-file "${NOTES_FILE}" \
+              --target "${{ github.sha }}"
+          fi
 
   deploy-main:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -574,7 +638,7 @@ jobs:
       LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Login to Docker Hub
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
@@ -680,3 +744,11 @@ jobs:
       - name: Push images to Docker Hub
         run: |
           src/main/docker/build-variants.sh main --push-only
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PERSONAL_ACCESS_TOKEN }}
+          repository: trustep/aws-sam-custom-deploy
+          short-description: Bitbucket Pipe for customized AWS SAM build/package/deploy/delete with runtime image variants.
+          readme-filepath: ./README.md

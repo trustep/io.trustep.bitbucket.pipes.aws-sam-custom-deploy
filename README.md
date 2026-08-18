@@ -69,6 +69,11 @@ Pipe image tags mirror the AWS SAM CLI version embedded in the chosen SAM build 
 * `latest` / `latest-<runtime>` are floating tags published from `main`.
 * Browse published tags on
   [Docker Hub](https://hub.docker.com/r/trustep/aws-sam-custom-deploy/tags).
+* Per-version release notes live at the repository root as `release-notes-<x.y.z>.md` and are published as
+  [GitHub Releases](https://github.com/trustep/io.trustep.bitbucket.pipes.aws-sam-custom-deploy/releases).
+  Current notes: [release-notes-1.165.0.md](release-notes-1.165.0.md)
+  ([GitHub Release v1.165.0](https://github.com/trustep/io.trustep.bitbucket.pipes.aws-sam-custom-deploy/releases/tag/v1.165.0)
+  after the release pipeline runs).
 
 | Tag | Behavior |
 | :-- | :------- |
@@ -110,12 +115,18 @@ To add or remove a supported runtime, edit `variants.json` (no dynamic discovery
 
 To advance the target SAM version: update `SAM_TARGET_VERSION` in
 `.github/workflows/pipeline.yaml`, the `SAM_CLI_VERSION` default in `src/main/docker/Dockerfile`,
-`image` in `src/main/docker/pipe.yml`, and this README; then publish via a `release*` branch.
-All variants in `variants.json` are rebuilt against that SAM version.
+`image` in `src/main/docker/pipe.yml`, add `release-notes-<version>.md` at the repository root, and
+update this README; then publish via a `release*` branch. On `release*` and `main`, the pipeline fails
+in `prepare` if the release-notes file for the target version is missing (on other branches it only
+warns). All variants in `variants.json` are rebuilt against that SAM version.
 
 `src/main/docker/pipe.yml` pins a concrete image tag for the pipe metadata packaged inside the image
 (currently the target `x.y.z` without runtime suffix). Consumers choose `latest`, `x.y.z`, or a
 suffixed tag in the `pipe:` line themselves.
+
+SonarCloud analysis runs on every push via the `sonarcloud` job. Configure the repository secret
+`SONAR_TOKEN` and ensure `sonar.organization` / `sonar.projectKey` in `sonar-project.properties`
+match the project created in SonarCloud (GitHub binding).
 
 ## Prerequisites
 
