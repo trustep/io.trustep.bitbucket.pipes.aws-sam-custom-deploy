@@ -23,7 +23,7 @@ PY
 )
 
 echo "Generating Docker Hub Credentials"
-DOCKER_HUB_TOKEN=$(curl --silent -X POST -H "Content-Type: application/json" \
+DOCKER_HUB_TOKEN=$(curl --proto "=https" --silent -X POST -H "Content-Type: application/json" \
   -d "{\"username\": \"${DOCKER_HUB_USERNAME}\", \"password\": \"${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}\"}" \
   https://hub.docker.com/v2/users/login)
 DOCKER_HUB_BEARER=$(echo "${DOCKER_HUB_TOKEN}" | jq -r ".token")
@@ -37,7 +37,7 @@ for SUFFIX in "${SUFFIXES[@]}"; do
     continue
   fi
   DOCKER_IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${FULL_TAG}" | awk -F"@" '{print $2}')
-  curl --location --silent -X POST \
+  curl --proto "=https" --location --silent -X POST \
     "https://hub.docker.com/v2/namespaces/${DOCKER_HUB_USERNAME}/delete-images" \
     --header "Authorization: Bearer ${DOCKER_HUB_BEARER}" \
     --header "Content-Type: application/json" \
