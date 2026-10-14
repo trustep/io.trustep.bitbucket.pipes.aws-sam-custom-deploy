@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read-only check of the TOML given by SAM_CONFIG_FILE before invoking SAM."""
 
+import os
 import sys
 from pathlib import Path
 
@@ -42,14 +43,28 @@ def main(argv):
 
 
 def read_toml(config_path):
-    path = Path(config_path)
-    if not path.exists():
+    # The pipe already cd'd into BITBUCKET_CLONE_DIR. Reject paths that resolve outside it.
+    if not isinstance(config_path, str) or config_path == "" or "\x00" in config_path:
         raise ValueError(f"SAM config file not found: {config_path}")
-    if not path.is_file():
+
+    base = os.path.realpath(os.getcwd())
+    candidate = os.path.realpath(os.path.join(base, config_path))
+    try:
+        inside_workdir = os.path.commonpath([base, candidate]) == base
+    except ValueError:
+        inside_workdir = False
+    if not inside_workdir:
+        raise ValueError(
+            f"SAM config file must be inside the working directory: {config_path}"
+        )
+
+    if not os.path.exists(candidate):
+        raise ValueError(f"SAM config file not found: {config_path}")
+    if not os.path.isfile(candidate):
         raise ValueError(f"SAM config file is not a file: {config_path}")
 
     try:
-        with path.open("rb") as handle:
+        with open(candidate, "rb") as handle:
             document = tomli.load(handle)
     except PermissionError as exc:
         raise ValueError(f"SAM config file not readable: {config_path}") from exc

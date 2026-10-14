@@ -11,7 +11,7 @@
 - Consumers choose the tag in `pipe:` (for example `trustep/aws-sam-custom-deploy:1.169.0-python3.12`).
 
 ### SAM config validation
-- Before `sam build`, `sam package`, `sam deploy`, or `sam delete`, the pipe reads `SAM_CONFIG_FILE` from `BITBUCKET_CLONE_DIR` and stops if the file is missing, unreadable, or not valid TOML.
+- Before `sam build`, `sam package`, `sam deploy`, or `sam delete`, the pipe reads `SAM_CONFIG_FILE` from `BITBUCKET_CLONE_DIR` and stops if the file is missing, unreadable, not valid TOML, or resolves outside that directory.
 - `version` must be the float `0.1`, and a table named exactly `BITBUCKET_DEPLOYMENT_ENVIRONMENT` must exist.
 - Deploy mode checks present `global`, `build`, `package`, and `deploy` sections; delete mode checks `global` and `delete`. A present section or its `parameters` value must be a table. Other keys are optional. The file is not modified, and the same path is passed as `--config-file`.
 - Details: [samconfig contract](README.md#samconfig-contract).

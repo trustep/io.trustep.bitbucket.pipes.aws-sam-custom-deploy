@@ -177,7 +177,8 @@ Before `sam build`, `sam package`, `sam deploy`, or `sam delete`, the pipe reads
 `SAM_CONFIG_FILE` from the current directory (`BITBUCKET_CLONE_DIR`) and stops without calling those
 commands when any of the following is true:
 
-* the path is missing, not a file, or not readable (there is no fallback to another filename);
+* the path is missing, not a file, not readable, or resolves outside that working directory
+  (there is no fallback to another filename);
 * the file is not valid TOML;
 * `version` is missing or is not the float `0.1`;
 * there is no table named exactly `BITBUCKET_DEPLOYMENT_ENVIRONMENT`;
@@ -448,7 +449,7 @@ injected by Bitbucket. `ARTIFACTS_BUCKET_PREFIX` can be omitted to use the defau
 | :------ | :----------- | :------------ |
 | Missing variable / pipe exits early | Required env not set | Compare logs with the Variables table; set Bitbucket vars or pass them in the pipe block. |
 | Config environment not found | `BITBUCKET_DEPLOYMENT_ENVIRONMENT` does not match a table in the config file | Use `deployment: <env>` on the step and a matching `[<env>]` table (for example `[<env>.deploy.parameters]`). |
-| Invalid or unreadable SAM config | TOML syntax, `version` other than `0.1`, or a command `parameters` value that is not a table | The log names `SAM_CONFIG_FILE` and the offending section or key. Fix that file; the pipe does not rewrite it. |
+| Invalid or unreadable SAM config | TOML syntax, `version` other than `0.1`, a path outside the clone directory, or a command `parameters` value that is not a table | The log names `SAM_CONFIG_FILE` and the offending section or key. Fix that file; the pipe does not rewrite it. |
 | Invalid credentials | IAM keys wrong or OIDC/trust misconfigured | Confirm secrets; if you used `sam pipeline bootstrap`, reuse its outputs. Otherwise ensure the identity can assume `PIPELINE_EXECUTION_ROLE`. |
 | Access denied on S3 or CloudFormation | Role permissions incomplete | Prefer bootstrap-managed roles/bucket. Otherwise grant package/upload and stack deploy permissions on the execution roles. |
 | Empty changeset failure | Stack unchanged and fail-on-empty enabled | Set `FAIL_ON_EMPTY_CHANGESET: 'false'` (default) or expect no-op deploys to fail when `true`. |

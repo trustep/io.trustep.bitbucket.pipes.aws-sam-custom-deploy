@@ -5,7 +5,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 PIPE_DIR="${ROOT}/src/main/docker/pipe"
 VALIDATOR="${PIPE_DIR}/validate_samconfig.py"
-FIXTURE="${ROOT}/src/test/docker/resources/samconfig.toml"
 
 failures=0
 
@@ -24,11 +23,16 @@ expect_fail() {
   local env_name="$3"
   local delete_flag="$4"
   local needle="$5"
+  local cwd="${6:-}"
   local output=""
   local status=0
 
   set +e
-  output=$(python3 "${VALIDATOR}" "${path}" "${env_name}" "${delete_flag}" 2>&1)
+  if [[ -n "${cwd}" ]]; then
+    output=$(cd "${cwd}" && python3 "${VALIDATOR}" "${path}" "${env_name}" "${delete_flag}" 2>&1)
+  else
+    output=$(python3 "${VALIDATOR}" "${path}" "${env_name}" "${delete_flag}" 2>&1)
+  fi
   status=$?
   set -e
 
@@ -52,11 +56,16 @@ expect_ok() {
   local path="$2"
   local env_name="$3"
   local delete_flag="$4"
+  local cwd="${5:-}"
   local output=""
   local status=0
 
   set +e
-  output=$(python3 "${VALIDATOR}" "${path}" "${env_name}" "${delete_flag}" 2>&1)
+  if [[ -n "${cwd}" ]]; then
+    output=$(cd "${cwd}" && python3 "${VALIDATOR}" "${path}" "${env_name}" "${delete_flag}" 2>&1)
+  else
+    output=$(python3 "${VALIDATOR}" "${path}" "${env_name}" "${delete_flag}" 2>&1)
+  fi
   status=$?
   set -e
 
@@ -95,7 +104,7 @@ EOF
 
 before_sum=$(cksum "${WORKDIR}/pipeline-custom.toml")
 expect_ok "valid toml with a name other than samconfig.toml" \
-  "${WORKDIR}/pipeline-custom.toml" "staging" "false"
+  "pipeline-custom.toml" "staging" "false" "${WORKDIR}"
 after_sum=$(cksum "${WORKDIR}/pipeline-custom.toml")
 if [[ "${before_sum}" != "${after_sum}" ]]; then
   fail_case "validator modified the file"
@@ -103,23 +112,27 @@ else
   pass "validated file is left unchanged"
 fi
 
-expect_ok "qa samconfig.toml fixture" "${FIXTURE}" "qa" "false"
+expect_ok "qa samconfig.toml fixture" \
+  "src/test/docker/resources/samconfig.toml" "qa" "false" "${ROOT}"
 expect_ok "optional sections unused on delete" \
-  "${WORKDIR}/pipeline-custom.toml" "staging" "true"
+  "pipeline-custom.toml" "staging" "true" "${WORKDIR}"
 
 expect_fail "missing file" \
-  "${WORKDIR}/no-such.toml" "staging" "false" \
-  "SAM config file not found: ${WORKDIR}/no-such.toml"
+  "no-such.toml" "staging" "false" \
+  "SAM config file not found: no-such.toml" \
+  "${WORKDIR}"
 
 mkdir -p "${WORKDIR}/not-a-file.toml"
 expect_fail "path is not a file" \
-  "${WORKDIR}/not-a-file.toml" "staging" "false" \
-  "SAM config file is not a file: ${WORKDIR}/not-a-file.toml"
+  "not-a-file.toml" "staging" "false" \
+  "SAM config file is not a file: not-a-file.toml" \
+  "${WORKDIR}"
 
 printf 'version = [\n' > "${WORKDIR}/broken.toml"
 expect_fail "toml syntax error" \
-  "${WORKDIR}/broken.toml" "staging" "false" \
-  "SAM config file is not valid TOML: ${WORKDIR}/broken.toml"
+  "broken.toml" "staging" "false" \
+  "SAM config file is not valid TOML: broken.toml" \
+  "${WORKDIR}"
 
 cat > "${WORKDIR}/missing-env.toml" <<'EOF'
 version = 0.1
@@ -128,16 +141,18 @@ version = 0.1
 capabilities = "CAPABILITY_IAM"
 EOF
 expect_fail "required environment missing" \
-  "${WORKDIR}/missing-env.toml" "staging" "false" \
-  "missing environment table [staging]"
+  "missing-env.toml" "staging" "false" \
+  "missing environment table [staging]" \
+  "${WORKDIR}"
 
 cat > "${WORKDIR}/missing-version.toml" <<'EOF'
 [staging.deploy.parameters]
 capabilities = "CAPABILITY_IAM"
 EOF
 expect_fail "required version missing" \
-  "${WORKDIR}/missing-version.toml" "staging" "false" \
-  "missing required key 'version'"
+  "missing-version.toml" "staging" "false" \
+  "missing required key 'version'" \
+  "${WORKDIR}"
 
 cat > "${WORKDIR}/bad-parameters.toml" <<'EOF'
 version = 0.1
@@ -146,10 +161,11 @@ version = 0.1
 parameters = "not-a-table"
 EOF
 expect_fail "invalid parameters on the deploy flow" \
-  "${WORKDIR}/bad-parameters.toml" "staging" "false" \
-  "[staging.deploy.parameters] must be a table"
+  "bad-parameters.toml" "staging" "false" \
+  "[staging.deploy.parameters] must be a table" \
+  "${WORKDIR}"
 expect_ok "deploy parameters are not required on delete" \
-  "${WORKDIR}/bad-parameters.toml" "staging" "true"
+  "bad-parameters.toml" "staging" "true" "${WORKDIR}"
 
 if [[ "$(id -u)" -eq 0 ]]; then
   echo "skip: unreadable file (euid 0)"
@@ -157,10 +173,16 @@ else
   printf 'version = 0.1\n\n[staging.deploy.parameters]\n' > "${WORKDIR}/unreadable.toml"
   chmod 000 "${WORKDIR}/unreadable.toml"
   expect_fail "unreadable file" \
-    "${WORKDIR}/unreadable.toml" "staging" "false" \
-    "SAM config file not readable: ${WORKDIR}/unreadable.toml"
+    "unreadable.toml" "staging" "false" \
+    "SAM config file not readable: unreadable.toml" \
+    "${WORKDIR}"
   chmod 644 "${WORKDIR}/unreadable.toml"
 fi
+
+expect_fail "path outside the working directory" \
+  "/etc/hosts" "staging" "false" \
+  "SAM config file must be inside the working directory: /etc/hosts" \
+  "${WORKDIR}"
 
 # The pipe must pass the same SAM_CONFIG_FILE and stop before build/package/deploy/delete.
 HARNESS="$(mktemp -d)"
