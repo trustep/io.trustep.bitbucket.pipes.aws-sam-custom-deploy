@@ -43,12 +43,19 @@ def main(argv):
 
 
 def read_toml(config_path):
-    # The pipe already cd'd into BITBUCKET_CLONE_DIR. Reject paths that resolve outside it.
+    # Relative paths are resolved from BITBUCKET_CLONE_DIR, not from the process cwd.
     if not isinstance(config_path, str) or config_path == "" or "\x00" in config_path:
         raise ValueError(f"SAM config file not found: {config_path}")
 
-    base = os.path.realpath(os.getcwd())
-    candidate = os.path.realpath(os.path.join(base, config_path))
+    clone_dir = os.environ.get("BITBUCKET_CLONE_DIR")
+    if not clone_dir or not os.path.isdir(clone_dir):
+        raise ValueError("BITBUCKET_CLONE_DIR is missing or is not a directory")
+
+    base = os.path.realpath(clone_dir)
+    if os.path.isabs(config_path):
+        candidate = os.path.realpath(config_path)
+    else:
+        candidate = os.path.realpath(os.path.join(base, config_path))
     try:
         inside_workdir = os.path.commonpath([base, candidate]) == base
     except ValueError:
@@ -58,9 +65,9 @@ def read_toml(config_path):
             f"SAM config file must be inside the working directory: {config_path}"
         )
 
-    if not os.path.exists(candidate):
-        raise ValueError(f"SAM config file not found: {config_path}")
     if not os.path.isfile(candidate):
+        if not os.path.exists(candidate):
+            raise ValueError(f"SAM config file not found: {config_path}")
         raise ValueError(f"SAM config file is not a file: {config_path}")
 
     try:

@@ -174,7 +174,7 @@ parameter_overrides = "MyParam=\"value\""
 ```
 
 Before `sam build`, `sam package`, `sam deploy`, or `sam delete`, the pipe reads that same
-`SAM_CONFIG_FILE` from the current directory (`BITBUCKET_CLONE_DIR`) and stops without calling those
+`SAM_CONFIG_FILE` relative to `BITBUCKET_CLONE_DIR` and stops without calling those
 commands when any of the following is true:
 
 * the path is missing, not a file, not readable, or resolves outside that working directory

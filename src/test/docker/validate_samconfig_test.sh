@@ -29,9 +29,15 @@ expect_fail() {
 
   set +e
   if [[ -n "${cwd}" ]]; then
-    output=$(cd "${cwd}" && python3 "${VALIDATOR}" "${path}" "${env_name}" "${delete_flag}" 2>&1)
+    output=$(
+      cd /tmp && BITBUCKET_CLONE_DIR="${cwd}" \
+        python3 "${VALIDATOR}" "${path}" "${env_name}" "${delete_flag}" 2>&1
+    )
   else
-    output=$(python3 "${VALIDATOR}" "${path}" "${env_name}" "${delete_flag}" 2>&1)
+    output=$(
+      env -u BITBUCKET_CLONE_DIR \
+        python3 "${VALIDATOR}" "${path}" "${env_name}" "${delete_flag}" 2>&1
+    )
   fi
   status=$?
   set -e
@@ -62,9 +68,15 @@ expect_ok() {
 
   set +e
   if [[ -n "${cwd}" ]]; then
-    output=$(cd "${cwd}" && python3 "${VALIDATOR}" "${path}" "${env_name}" "${delete_flag}" 2>&1)
+    output=$(
+      cd /tmp && BITBUCKET_CLONE_DIR="${cwd}" \
+        python3 "${VALIDATOR}" "${path}" "${env_name}" "${delete_flag}" 2>&1
+    )
   else
-    output=$(python3 "${VALIDATOR}" "${path}" "${env_name}" "${delete_flag}" 2>&1)
+    output=$(
+      env -u BITBUCKET_CLONE_DIR \
+        python3 "${VALIDATOR}" "${path}" "${env_name}" "${delete_flag}" 2>&1
+    )
   fi
   status=$?
   set -e
@@ -80,8 +92,11 @@ expect_ok() {
   pass "${name}"
 }
 
-WORKDIR="$(mktemp -d)"
-trap 'rm -rf "${WORKDIR}"' EXIT
+SANDBOX="$(mktemp -d)"
+WORKDIR="${SANDBOX}/workspace"
+OUTSIDE="${SANDBOX}/outside"
+mkdir -p "${WORKDIR}" "${OUTSIDE}"
+trap 'rm -rf "${SANDBOX}"' EXIT
 
 cat > "${WORKDIR}/pipeline-custom.toml" <<'EOF'
 version = 0.1
@@ -183,6 +198,43 @@ expect_fail "path outside the working directory" \
   "/etc/hosts" "staging" "false" \
   "SAM config file must be inside the working directory: /etc/hosts" \
   "${WORKDIR}"
+
+mkdir -p "${WORKDIR}/configs"
+cp "${WORKDIR}/pipeline-custom.toml" "${WORKDIR}/configs/app.toml"
+expect_ok "valid toml in a subdirectory" \
+  "configs/app.toml" "staging" "false" "${WORKDIR}"
+expect_ok "absolute path inside the workspace" \
+  "${WORKDIR}/pipeline-custom.toml" "staging" "false" "${WORKDIR}"
+expect_ok "relative path that stays inside" \
+  "configs/../pipeline-custom.toml" "staging" "false" "${WORKDIR}"
+
+printf 'version = 0.1\n\n[staging.deploy.parameters]\n' > "${OUTSIDE}/outside.toml"
+expect_fail "relative path that escapes the workspace" \
+  "../outside/outside.toml" "staging" "false" \
+  "SAM config file must be inside the working directory: ../outside/outside.toml" \
+  "${WORKDIR}"
+
+ln -s "${OUTSIDE}/outside.toml" "${WORKDIR}/linked-out.toml"
+expect_fail "symlink pointing outside" \
+  "linked-out.toml" "staging" "false" \
+  "SAM config file must be inside the working directory: linked-out.toml" \
+  "${WORKDIR}"
+
+mkdir -p "${OUTSIDE}/leaf" "${WORKDIR}/nested"
+printf 'version = 0.1\n\n[staging.deploy.parameters]\n' > "${OUTSIDE}/leaf/hidden.toml"
+ln -s "${OUTSIDE}/leaf" "${WORKDIR}/nested/via"
+expect_fail "intermediate symlink pointing outside" \
+  "nested/via/hidden.toml" "staging" "false" \
+  "SAM config file must be inside the working directory: nested/via/hidden.toml" \
+  "${WORKDIR}"
+
+ln -s "${WORKDIR}/pipeline-custom.toml" "${WORKDIR}/linked-in.toml"
+expect_ok "symlink pointing inside the workspace" \
+  "linked-in.toml" "staging" "false" "${WORKDIR}"
+
+expect_fail "missing BITBUCKET_CLONE_DIR" \
+  "pipeline-custom.toml" "staging" "false" \
+  "BITBUCKET_CLONE_DIR is missing or is not a directory"
 
 # The pipe must pass the same SAM_CONFIG_FILE and stop before build/package/deploy/delete.
 HARNESS="$(mktemp -d)"
