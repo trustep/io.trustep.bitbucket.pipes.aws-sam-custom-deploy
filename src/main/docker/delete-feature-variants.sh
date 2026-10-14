@@ -27,7 +27,7 @@ DOCKER_HUB_TOKEN=$(curl --proto "=https" --silent -X POST -H "Content-Type: appl
   -d "{\"username\": \"${DOCKER_HUB_USERNAME}\", \"password\": \"${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}\"}" \
   https://hub.docker.com/v2/users/login)
 DOCKER_HUB_BEARER=$(echo "${DOCKER_HUB_TOKEN}" | jq -r ".token // empty")
-if [ -z "${DOCKER_HUB_BEARER}" ]; then
+if [[ -z "${DOCKER_HUB_BEARER}" ]]; then
   echo "Could not obtain the Docker Hub token" >&2
   exit 1
 fi
@@ -41,7 +41,7 @@ for SUFFIX in "${SUFFIXES[@]}"; do
     continue
   fi
   DOCKER_IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${FULL_TAG}" | awk -F"@" '{print $2}')
-  if [ -z "${DOCKER_IMAGE_DIGEST}" ]; then
+  if [[ -z "${DOCKER_IMAGE_DIGEST}" ]]; then
     echo "Skip (no digest): ${FULL_TAG}"
     continue
   fi
@@ -51,7 +51,7 @@ for SUFFIX in "${SUFFIXES[@]}"; do
     --header "Authorization: Bearer ${DOCKER_HUB_BEARER}" \
     --header "Content-Type: application/json" \
     -d "{\"dry_run\": false, \"manifests\": [{\"repository\": \"${BITBUCKET_REPO_SLUG}\", \"digest\": \"${DOCKER_IMAGE_DIGEST}\" }]}")
-  if [ "${HTTP_CODE}" != "200" ] && [ "${HTTP_CODE}" != "202" ] && [ "${HTTP_CODE}" != "204" ]; then
+  if [[ "${HTTP_CODE}" != "200" && "${HTTP_CODE}" != "202" && "${HTTP_CODE}" != "204" ]]; then
     echo "Failed to delete ${FULL_TAG} (HTTP ${HTTP_CODE})" >&2
     exit 1
   fi
