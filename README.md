@@ -64,15 +64,15 @@ that pipe may be enough. This project exists for the customization gaps above.
 
 Pipe image tags mirror the AWS SAM CLI version embedded in the chosen SAM build base image.
 
-* Current target SAM CLI version: **1.165.0**
+* Current target SAM CLI version: **1.169.0**
 * Prefer a pinned `x.y.z` (optionally with a runtime suffix) when you need a reproducible SAM CLI contract.
 * `latest` / `latest-<runtime>` are floating tags published from `main`.
 * Browse published tags on
   [Docker Hub](https://hub.docker.com/r/trustep/aws-sam-custom-deploy/tags).
 * Per-version release notes live at the repository root as `release-notes-<x.y.z>.md` and are published as
   [GitHub Releases](https://github.com/trustep/io.trustep.bitbucket.pipes.aws-sam-custom-deploy/releases).
-  Current notes: [release-notes-1.165.0.md](release-notes-1.165.0.md)
-  ([GitHub Release v1.165.0](https://github.com/trustep/io.trustep.bitbucket.pipes.aws-sam-custom-deploy/releases/tag/v1.165.0)
+  Current notes: [release-notes-1.169.0.md](release-notes-1.169.0.md)
+  ([GitHub Release v1.169.0](https://github.com/trustep/io.trustep.bitbucket.pipes.aws-sam-custom-deploy/releases/tag/v1.169.0)
   after the release pipeline runs).
 
 | Tag | Behavior |
@@ -96,9 +96,9 @@ built and published on release/`main`.
 
 | Suffix | Base image | Notes |
 | :----- | :--------- | :---- |
-| *(none)* | `public.ecr.aws/sam/build-provided.al2023` | **Default / compatibility.** Adds NVM + Node.js 22. Tags: `latest`, `1.165.0`. |
-| `-nodejs24.x` | `public.ecr.aws/sam/build-nodejs24.x` | Official Node 24 build image. Tags: `latest-nodejs24.x`, `1.165.0-nodejs24.x`. |
-| `-nodejs22.x` | `public.ecr.aws/sam/build-nodejs22.x` | Official Node 22 build image. Tags: `latest-nodejs22.x`, `1.165.0-nodejs22.x`. |
+| *(none)* | `public.ecr.aws/sam/build-provided.al2023` | **Default / compatibility.** Adds NVM + Node.js 22. Tags: `latest`, `1.169.0`. |
+| `-nodejs24.x` | `public.ecr.aws/sam/build-nodejs24.x` | Official Node 24 build image. Tags: `latest-nodejs24.x`, `1.169.0-nodejs24.x`. |
+| `-nodejs22.x` | `public.ecr.aws/sam/build-nodejs22.x` | Official Node 22 build image. Tags: `latest-nodejs22.x`, `1.169.0-nodejs22.x`. |
 | `-python3.14` | `public.ecr.aws/sam/build-python3.14` | Official Python 3.14 build image. |
 | `-python3.13` | `public.ecr.aws/sam/build-python3.13` | Official Python 3.13 build image. |
 | `-python3.12` | `public.ecr.aws/sam/build-python3.12` | Official Python 3.12 build image. |

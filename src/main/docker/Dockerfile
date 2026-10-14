@@ -1,4 +1,4 @@
-ARG SAM_CLI_VERSION=1.165.0
+ARG SAM_CLI_VERSION=1.169.0
 ARG SAM_BASE_IMAGE=build-provided.al2023
 # Las imagenes oficiales SAM build y Bitbucket Pipes esperan root en CI (sam build, nvm, mounts).
 # No cambiar a USER no-root sin validar el pipe completo. (Sonar docker:S6471 — aceptado a proposito)
