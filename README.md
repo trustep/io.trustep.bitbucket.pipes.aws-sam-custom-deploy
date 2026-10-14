@@ -173,6 +173,21 @@ capabilities = "CAPABILITY_IAM"
 parameter_overrides = "MyParam=\"value\""
 ```
 
+Before `sam build`, `sam package`, `sam deploy`, or `sam delete`, the pipe reads that same
+`SAM_CONFIG_FILE` from the current directory (`BITBUCKET_CLONE_DIR`) and stops without calling those
+commands when any of the following is true:
+
+* the path is missing, not a file, or not readable (there is no fallback to another filename);
+* the file is not valid TOML;
+* `version` is missing or is not the float `0.1`;
+* there is no table named exactly `BITBUCKET_DEPLOYMENT_ENVIRONMENT`;
+* for the selected mode, a present `global` section or command section is not a table, or its
+  `parameters` entry is present but not a table. Deploy mode checks `build`, `package`, and `deploy`.
+  Delete mode (`DELETE=true`) checks `delete` only.
+
+Other sections and parameter keys are optional and are not rejected. The file is not modified.
+Command-line arguments still override samconfig as described below.
+
 **CLI overrides vs samconfig:** arguments the pipe passes on the command line (stack name, region,
 artifact bucket/prefix, packaged template path, `--role-arn` on deploy, empty-changeset /
 skip-execution flags, and `--debug` when enabled) are set for that run.
@@ -199,12 +214,14 @@ literal `false` (the script default when unset), the pipe uses **OIDC**. Otherwi
 1. Sets `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` from `PIPELINE_USER_*` and requires `AWS_REGION`.
 2. Validates credentials with `sts get-caller-identity`.
 3. Prints `sam --version` and `cd` into `BITBUCKET_CLONE_DIR`.
-4. **Deployment mode only:** runs `sam build` with the pipeline user credentials.
-5. Assumes `PIPELINE_EXECUTION_ROLE` via `sts:AssumeRole` (session name hardcoded as
+4. Validates `SAM_CONFIG_FILE` (read-only) for the selected mode. Failure stops the pipe before build,
+   package, deploy, and delete.
+5. **Deployment mode only:** runs `sam build` with the pipeline user credentials.
+6. Assumes `PIPELINE_EXECUTION_ROLE` via `sts:AssumeRole` (session name hardcoded as
    `testing-stage-packaging`; `ROLE_SESSION_NAME` is not used on this path).
-6. **Deployment mode:** runs `sam package` then `sam deploy` (deploy passes `--role-arn` =
+7. **Deployment mode:** runs `sam package` then `sam deploy` (deploy passes `--role-arn` =
    `CF_EXECUTION_ROLE`).
-7. **Delete mode:** skips build/package/deploy; runs `sam delete` under the assumed role.
+8. **Delete mode:** skips build/package/deploy; runs `sam delete` under the assumed role.
 
 ### OIDC path
 
@@ -213,10 +230,12 @@ literal `false` (the script default when unset), the pipe uses **OIDC**. Otherwi
    `BitbucketPipeline`).
 2. Validates credentials with `sts get-caller-identity`.
 3. Prints `sam --version` and `cd` into `BITBUCKET_CLONE_DIR`.
-4. Does **not** call `sts:AssumeRole`.
-5. **Deployment mode:** `sam build`, then `sam package`, then `sam deploy` (with
+4. Validates `SAM_CONFIG_FILE` (read-only) for the selected mode. Failure stops the pipe before build,
+   package, deploy, and delete.
+5. Does **not** call `sts:AssumeRole`.
+6. **Deployment mode:** `sam build`, then `sam package`, then `sam deploy` (with
    `--role-arn "${CF_EXECUTION_ROLE}"`).
-6. **Delete mode:** `sam delete` only.
+7. **Delete mode:** `sam delete` only.
 
 | Role / identity | Purpose |
 | :-------------- | :------ |
@@ -267,7 +286,7 @@ The recommended tag is `latest`; pin an `x.y.z` tag only when your project needs
 | PIPELINE_USER_SECRET_ACCESS_KEY | Conditional | `${AWS_SECRET_ACCESS_KEY}` | Required on the IAM path (when OIDC is not selected). |
 | PIPELINE_EXECUTION_ROLE | Yes | `${PIPELINE_EXECUTION_ROLE}` | Always validated. IAM: assumed after build. OIDC: `AWS_ROLE_ARN` for web identity. |
 | SAM_TEMPLATE | Yes | `template.yaml` | Always validated. Used by `sam build` only; still must be set in delete mode. |
-| SAM_CONFIG_FILE | Yes | `samconfig.toml` | Always validated. Passed to build/package/deploy/delete. |
+| SAM_CONFIG_FILE | Yes | `samconfig.toml` | Always validated before SAM commands. Passed unchanged as `--config-file` to build/package/deploy/delete. |
 | CF_STACK_NAME | Yes | `${CF_STACK_NAME}` | Always validated. Stack name for deploy/delete. |
 | CF_EXECUTION_ROLE | Yes | `${CF_EXECUTION_ROLE}` | Always validated. Used only as `--role-arn` on `sam deploy` (not on delete). |
 | ARTIFACTS_BUCKET | Yes | `${ARTIFACTS_BUCKET}` | Always validated. S3 bucket for package/deploy/delete. |
@@ -428,7 +447,8 @@ injected by Bitbucket. `ARTIFACTS_BUCKET_PREFIX` can be omitted to use the defau
 | Symptom | Likely cause | What to check |
 | :------ | :----------- | :------------ |
 | Missing variable / pipe exits early | Required env not set | Compare logs with the Variables table; set Bitbucket vars or pass them in the pipe block. |
-| Config environment not found | `BITBUCKET_DEPLOYMENT_ENVIRONMENT` does not match `samconfig.toml` | Use `deployment: <env>` on the step and a matching `[<env>.deploy.parameters]` section. |
+| Config environment not found | `BITBUCKET_DEPLOYMENT_ENVIRONMENT` does not match a table in the config file | Use `deployment: <env>` on the step and a matching `[<env>]` table (for example `[<env>.deploy.parameters]`). |
+| Invalid or unreadable SAM config | TOML syntax, `version` other than `0.1`, or a command `parameters` value that is not a table | The log names `SAM_CONFIG_FILE` and the offending section or key. Fix that file; the pipe does not rewrite it. |
 | Invalid credentials | IAM keys wrong or OIDC/trust misconfigured | Confirm secrets; if you used `sam pipeline bootstrap`, reuse its outputs. Otherwise ensure the identity can assume `PIPELINE_EXECUTION_ROLE`. |
 | Access denied on S3 or CloudFormation | Role permissions incomplete | Prefer bootstrap-managed roles/bucket. Otherwise grant package/upload and stack deploy permissions on the execution roles. |
 | Empty changeset failure | Stack unchanged and fail-on-empty enabled | Set `FAIL_ON_EMPTY_CHANGESET: 'false'` (default) or expect no-op deploys to fail when `true`. |

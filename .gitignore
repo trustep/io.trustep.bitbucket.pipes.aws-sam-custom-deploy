@@ -33,3 +33,8 @@
 
 src/test/docker/resources/.aws-sam
 src/test/docker/resources/packaged-template.yaml
+src/test/docker/resources/lambda/package-lock.json
+
+## Python
+**/__pycache__/
+**/*.py[cod]

@@ -100,6 +100,15 @@ run sam --version
 info "BITBUCKET_CLONE_DIR = ${BITBUCKET_CLONE_DIR}"
 cd $BITBUCKET_CLONE_DIR
 
+# Misma ruta que --config-file: relativa a BITBUCKET_CLONE_DIR, sin fallback de nombre.
+info "Validating SAM config file ${SAM_CONFIG_FILE}"
+if ! SAM_CONFIG_ERROR=$(python3 "$(dirname "$0")/validate_samconfig.py" \
+    "${SAM_CONFIG_FILE}" \
+    "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}" \
+    "${DELETE}" 2>&1); then
+  fail "${SAM_CONFIG_ERROR}"
+fi
+
 if [[ "${DELETE}" != "true" ]]; then
     info "Running sam build command..."
     run sam build ${PARAM_DEBUG} --template $SAM_TEMPLATE --config-file ${SAM_CONFIG_FILE} --config-env "${BITBUCKET_DEPLOYMENT_ENVIRONMENT}"

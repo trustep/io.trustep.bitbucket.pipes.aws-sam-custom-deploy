@@ -22,8 +22,10 @@ RUN curl --proto "=https" --location --output /common.sh https://bitbucket.org/b
       nvm install 22; \
     fi
 
-# Copy all application files in single operation
-COPY ./pipe/pipe.sh ./LICENSE ./pipe.yml /
+# Copy all application files in single operation.
+# validate_samconfig.py y vendor/tomli validan el TOML antes de invocar SAM.
+COPY ./pipe/pipe.sh ./pipe/validate_samconfig.py ./LICENSE ./pipe.yml /
+COPY ./pipe/vendor /vendor
 
 # Set permissions
 RUN chmod a+x /*.sh
