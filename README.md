@@ -205,6 +205,10 @@ orchestration controls listed in this README.
 
 Paths such as `SAM_TEMPLATE` and `SAM_CONFIG_FILE` are resolved after `cd ${BITBUCKET_CLONE_DIR}`.
 
+Both absolute and relative paths are supported, provided they resolve within BITBUCKET_CLONE_DIR.
+Relative paths are resolved from that directory. 
+Symbolic links are also supported when their resolved targets remain within the same directory.
+
 ## Roles and execution flow
 
 Authentication is chosen as follows: if `BITBUCKET_STEP_OIDC_TOKEN` is set to any value other than the
