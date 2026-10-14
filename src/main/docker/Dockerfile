@@ -1,7 +1,7 @@
 ARG SAM_CLI_VERSION=1.169.0
 ARG SAM_BASE_IMAGE=build-provided.al2023
-# Las imagenes oficiales SAM build y Bitbucket Pipes esperan root en CI (sam build, nvm, mounts).
-# No cambiar a USER no-root sin validar el pipe completo. (Sonar docker:S6471 — aceptado a proposito)
+# Official SAM build images and Bitbucket Pipes expect root in CI (sam build, nvm, mounts).
+# Do not switch to a non-root USER without validating the full pipe. (Sonar docker:S6471 — accepted on purpose)
 FROM public.ecr.aws/sam/${SAM_BASE_IMAGE}:${SAM_CLI_VERSION}
 
 # Re-declare after FROM so build-args apply to this stage.
@@ -23,7 +23,7 @@ RUN curl --proto "=https" --location --output /common.sh https://bitbucket.org/b
     fi
 
 # Copy all application files in single operation.
-# validate_samconfig.py y vendor/tomli validan el TOML antes de invocar SAM.
+# validate_samconfig.py and vendor/tomli check the TOML before invoking SAM.
 COPY ./pipe/pipe.sh ./pipe/validate_samconfig.py ./LICENSE ./pipe.yml /
 COPY ./pipe/vendor /vendor
 

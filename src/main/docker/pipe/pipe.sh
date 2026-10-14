@@ -100,7 +100,7 @@ run sam --version
 info "BITBUCKET_CLONE_DIR = ${BITBUCKET_CLONE_DIR}"
 cd $BITBUCKET_CLONE_DIR
 
-# Misma ruta que --config-file: relativa a BITBUCKET_CLONE_DIR, sin fallback de nombre.
+# Same path as --config-file: relative to BITBUCKET_CLONE_DIR, with no filename fallback.
 info "Validating SAM config file ${SAM_CONFIG_FILE}"
 if ! SAM_CONFIG_ERROR=$(python3 "$(dirname "$0")/validate_samconfig.py" \
     "${SAM_CONFIG_FILE}" \

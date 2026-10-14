@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cubre la validacion de SAM_CONFIG_FILE sin invocar AWS ni Docker.
+# Covers SAM_CONFIG_FILE validation without calling AWS or Docker.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
@@ -37,11 +37,11 @@ expect_fail() {
     return
   fi
   if [[ "${output}" != *"${needle}"* ]]; then
-    fail_case "${name} (mensaje: ${output})"
+    fail_case "${name} (message: ${output})"
     return
   fi
   if [[ "${output}" == *"secret-value"* ]]; then
-    fail_case "${name} (filtro valor sensible)"
+    fail_case "${name} (leaked secret value)"
     return
   fi
   pass "${name}"
@@ -65,7 +65,7 @@ expect_ok() {
     return
   fi
   if [[ -n "${output}" ]]; then
-    fail_case "${name} (salida inesperada: ${output})"
+    fail_case "${name} (unexpected output: ${output})"
     return
   fi
   pass "${name}"
@@ -94,30 +94,30 @@ cached = true
 EOF
 
 before_sum=$(cksum "${WORKDIR}/pipeline-custom.toml")
-expect_ok "toml valido con nombre distinto de samconfig.toml" \
+expect_ok "valid toml with a name other than samconfig.toml" \
   "${WORKDIR}/pipeline-custom.toml" "staging" "false"
 after_sum=$(cksum "${WORKDIR}/pipeline-custom.toml")
 if [[ "${before_sum}" != "${after_sum}" ]]; then
-  fail_case "el validador modifico el archivo"
+  fail_case "validator modified the file"
 else
-  pass "el archivo validado no se modifica"
+  pass "validated file is left unchanged"
 fi
 
-expect_ok "fixture samconfig.toml del entorno qa" "${FIXTURE}" "qa" "false"
-expect_ok "secciones opcionales no usadas en delete" \
+expect_ok "qa samconfig.toml fixture" "${FIXTURE}" "qa" "false"
+expect_ok "optional sections unused on delete" \
   "${WORKDIR}/pipeline-custom.toml" "staging" "true"
 
-expect_fail "archivo inexistente" \
+expect_fail "missing file" \
   "${WORKDIR}/no-such.toml" "staging" "false" \
   "SAM config file not found: ${WORKDIR}/no-such.toml"
 
 mkdir -p "${WORKDIR}/not-a-file.toml"
-expect_fail "ruta que no es archivo" \
+expect_fail "path is not a file" \
   "${WORKDIR}/not-a-file.toml" "staging" "false" \
   "SAM config file is not a file: ${WORKDIR}/not-a-file.toml"
 
 printf 'version = [\n' > "${WORKDIR}/broken.toml"
-expect_fail "toml con error de sintaxis" \
+expect_fail "toml syntax error" \
   "${WORKDIR}/broken.toml" "staging" "false" \
   "SAM config file is not valid TOML: ${WORKDIR}/broken.toml"
 
@@ -127,7 +127,7 @@ version = 0.1
 [qa.deploy.parameters]
 capabilities = "CAPABILITY_IAM"
 EOF
-expect_fail "entorno obligatorio ausente" \
+expect_fail "required environment missing" \
   "${WORKDIR}/missing-env.toml" "staging" "false" \
   "missing environment table [staging]"
 
@@ -135,7 +135,7 @@ cat > "${WORKDIR}/missing-version.toml" <<'EOF'
 [staging.deploy.parameters]
 capabilities = "CAPABILITY_IAM"
 EOF
-expect_fail "version obligatoria ausente" \
+expect_fail "required version missing" \
   "${WORKDIR}/missing-version.toml" "staging" "false" \
   "missing required key 'version'"
 
@@ -145,24 +145,24 @@ version = 0.1
 [staging.deploy]
 parameters = "not-a-table"
 EOF
-expect_fail "parameters invalido en el flujo deploy" \
+expect_fail "invalid parameters on the deploy flow" \
   "${WORKDIR}/bad-parameters.toml" "staging" "false" \
   "[staging.deploy.parameters] must be a table"
-expect_ok "parameters de deploy no se exige en delete" \
+expect_ok "deploy parameters are not required on delete" \
   "${WORKDIR}/bad-parameters.toml" "staging" "true"
 
 if [[ "$(id -u)" -eq 0 ]]; then
-  echo "skip: archivo ilegible (euid 0)"
+  echo "skip: unreadable file (euid 0)"
 else
   printf 'version = 0.1\n\n[staging.deploy.parameters]\n' > "${WORKDIR}/unreadable.toml"
   chmod 000 "${WORKDIR}/unreadable.toml"
-  expect_fail "archivo ilegible" \
+  expect_fail "unreadable file" \
     "${WORKDIR}/unreadable.toml" "staging" "false" \
     "SAM config file not readable: ${WORKDIR}/unreadable.toml"
   chmod 644 "${WORKDIR}/unreadable.toml"
 fi
 
-# El pipe debe usar el mismo SAM_CONFIG_FILE y abortar antes de build/package/deploy/delete.
+# The pipe must pass the same SAM_CONFIG_FILE and stop before build/package/deploy/delete.
 HARNESS="$(mktemp -d)"
 mkdir -p "${HARNESS}/home/.nvm" "${HARNESS}/bin" "${HARNESS}/clone" "${HARNESS}/pipe"
 printf ':\n' > "${HARNESS}/home/.nvm/nvm.sh"
@@ -229,35 +229,35 @@ run_pipe() {
 cp "${WORKDIR}/pipeline-custom.toml" "${HARNESS}/clone/pipeline-custom.toml"
 pipe_status=$(run_pipe "pipeline-custom.toml" "false")
 if [[ "${pipe_status}" -ne 0 ]]; then
-  fail_case "pipe con toml valido (exit ${pipe_status}): $(cat "${HARNESS}/pipe.err")"
+  fail_case "pipe with valid toml (exit ${pipe_status}): $(cat "${HARNESS}/pipe.err")"
 else
   sam_calls=$(grep -E '^(build|package|deploy) ' "${SAM_ARGS_LOG}" || true)
   if [[ -z "${sam_calls}" ]]; then
-    fail_case "pipe no invoco sam build/package/deploy"
+    fail_case "pipe did not invoke sam build/package/deploy"
   elif grep -E '^(build|package|deploy) ' "${SAM_ARGS_LOG}" | grep -qv -- '--config-file pipeline-custom.toml'; then
-    fail_case "sam no recibio el mismo --config-file: $(cat "${SAM_ARGS_LOG}")"
+    fail_case "sam did not receive the same --config-file: $(cat "${SAM_ARGS_LOG}")"
   elif grep -E '^(build|package|deploy) ' "${SAM_ARGS_LOG}" | grep -q 'samconfig.toml'; then
-    fail_case "sam uso un config file distinto del parametro"
+    fail_case "sam used a config file other than the parameter"
   else
-    pass "el mismo SAM_CONFIG_FILE llega a sam build/package/deploy"
+    pass "the same SAM_CONFIG_FILE is passed to sam build/package/deploy"
   fi
 fi
 
 printf 'version = [\n' > "${HARNESS}/clone/pipeline-custom.toml"
 pipe_status=$(run_pipe "pipeline-custom.toml" "false")
 if [[ "${pipe_status}" -eq 0 ]]; then
-  fail_case "pipe con toml invalido termino en 0"
+  fail_case "pipe with invalid toml exited 0"
 elif grep -E '^(build|package|deploy|delete) ' "${SAM_ARGS_LOG}" >/dev/null; then
-  fail_case "pipe invoco sam despues de fallar la validacion: $(cat "${SAM_ARGS_LOG}")"
+  fail_case "pipe invoked sam after validation failed: $(cat "${SAM_ARGS_LOG}")"
 else
-  pass "fallo de validacion corta el pipe antes del deploy (exit ${pipe_status})"
+  pass "validation failure stops the pipe before deploy (exit ${pipe_status})"
 fi
 
 rm -rf "${HARNESS}"
 
 if [[ "${failures}" -ne 0 ]]; then
-  echo "${failures} caso(s) fallaron" >&2
+  echo "${failures} case(s) failed" >&2
   exit 1
 fi
 
-echo "validacion samconfig: todos los casos pasaron"
+echo "samconfig validation: all cases passed"

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Construye (y opcionalmente publica) todas las variantes definidas en variants.json.
-# Uso:
+# Builds (and optionally publishes) every variant defined in variants.json.
+# Usage:
 #   build-variants.sh <feature|develop|release|main> [--push]
-# Variables de entorno requeridas:
+# Required environment variables:
 #   DOCKER_HUB_USERNAME, NEXT_RELEASE_BASE_VERSION, BITBUCKET_REPO_SLUG
 # feature: FEATURE_STACK_NAME
 # develop: DEV_TIMESTAMP
 set -euo pipefail
 
-KIND="${1:?kind requerido: feature|develop|release|main}"
+KIND="${1:?kind required: feature|develop|release|main}"
 MODE="build"
 if [[ "${2:-}" == "--push" ]]; then
   MODE="build-push"
@@ -61,7 +61,7 @@ image_tag_for_suffix() {
       echo "${BITBUCKET_REPO_SLUG}:latest${suffix}"
       ;;
     *)
-      echo "kind desconocido: ${KIND}" >&2
+      echo "unknown kind: ${KIND}" >&2
       exit 1
       ;;
   esac

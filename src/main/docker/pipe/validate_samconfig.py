@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Valida en solo lectura el TOML indicado por SAM_CONFIG_FILE antes de invocar SAM."""
+"""Read-only check of the TOML given by SAM_CONFIG_FILE before invoking SAM."""
 
 import sys
 from pathlib import Path
@@ -16,7 +16,7 @@ DELETE_COMMANDS = ("global", "delete")
 
 def main(argv):
     if len(argv) != 4:
-        emit("Uso interno: validate_samconfig.py <archivo> <config-env> <DELETE>")
+        emit("Internal use: validate_samconfig.py <file> <config-env> <DELETE>")
         return 1
 
     config_path = argv[1]

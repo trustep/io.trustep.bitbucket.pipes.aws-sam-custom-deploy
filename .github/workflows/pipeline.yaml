@@ -42,7 +42,7 @@ jobs:
       - id: setupVars
         name: Setup Environment Variables
         env:
-          # Versión objetivo del AWS SAM CLI; la tag del pipe se alinea a este valor.
+          # Target AWS SAM CLI version; pipe image tags follow this value.
           SAM_TARGET_VERSION: 1.169.0
           FEATURE_BRANCH_NAME: ${{github.event.ref}}
           SAM_CONFIG_FILE: samconfig.toml
