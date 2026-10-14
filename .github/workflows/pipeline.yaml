@@ -299,6 +299,8 @@ jobs:
       BITBUCKET_CLONE_DIR: ${{ needs.prepare.outputs.BITBUCKET_CLONE_DIR }}
       LOCAL_PATH: ${{ needs.prepare.outputs.LOCAL_PATH }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
       - name: Login to Docker Hub
         run: |
           echo ${DOCKER_HUB_PERSONAL_ACCESS_TOKEN}|docker login -u trustep --password-stdin
